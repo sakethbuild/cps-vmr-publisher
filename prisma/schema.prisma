@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TemplateType {
+  standard
+  raphael_medina_subspecialty
+  img_vmr
+  sunday_fundamentals
+  custom
+}
+
+enum SubmissionStatus {
+  submitted
+  awaiting_youtube
+  ready_for_draft
+  wordpress_draft_created
+  published
+}
+
+enum PersonRole {
+  presenter
+  discussant
+}
+
+enum PersonLinkType {
+  none
+  x
+  instagram
+  custom
+}
+
+model Submission {
+  id                   String           @id @default(cuid())
+  templateType         TemplateType
+  title                String
+  customTitle          String?
+  subspecialty         String?
+  residencyProgram     String?
+  sessionDate          DateTime
+  chiefComplaint       String?
+  youtubeUrl           String?
+  notes                String?
+  status               SubmissionStatus
+  originalFileName     String?
+  sanitizedFileName    String?
+  fileMimeType         String?
+  fileExtension        String?
+  storagePath          String?
+  previewImagePath     String?
+  previewImageMimeType String?
+  wordpressPageId      String?
+  wordpressUrl         String?
+  wordpressPrimaryMediaUrl String?
+  wordpressPreviewMediaUrl String?
+  wordpressPublishedAt DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  people               SubmissionPerson[]
+}
+
+model SubmissionPerson {
+  id            String         @id @default(cuid())
+  submissionId  String
+  role          PersonRole
+  fullName      String
+  linkType      PersonLinkType
+  handleOrUrl   String?
+  normalizedUrl String?
+  sortOrder     Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  submission    Submission     @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId, role, sortOrder])
+}

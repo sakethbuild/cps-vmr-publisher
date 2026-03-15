@@ -1,0 +1,44 @@
+{
+  "name": "cps-vmr-submissions",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "db:setup": "node scripts/setup-local-db.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push || npm run db:setup",
+    "prisma:seed": "npm run db:setup && tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.96",
+    "@prisma/client": "^6.19.2",
+    "clsx": "^2.1.1",
+    "mime-types": "^3.0.2",
+    "next": "16.1.6",
+    "pdfjs-dist": "^5.5.207",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.71.2",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "better-sqlite3": "^12.8.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "better-sqlite3": "^12.4.1",
+    "prisma": "^6.19.2",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^4.1.0"
+  }
+}
