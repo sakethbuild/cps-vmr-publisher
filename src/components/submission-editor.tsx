@@ -248,6 +248,23 @@ export function SubmissionEditor({
     });
   }
 
+  async function deleteSubmission() {
+    if (!submissionId) return;
+    if (!window.confirm("Are you sure you want to delete this submission? This cannot be undone.")) return;
+    setFeedback(null);
+    startActionTransition(() => {
+      void (async () => {
+        const response = await fetch(`/api/submissions/${submissionId}`, { method: "DELETE" });
+        const result = (await response.json()) as { error?: string; message?: string };
+        if (!response.ok) {
+          setFeedback({ tone: "error", message: result.error ?? "Could not delete submission." });
+          return;
+        }
+        router.push("/admin");
+      })();
+    });
+  }
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
@@ -487,6 +504,15 @@ export function SubmissionEditor({
                 onClick={copyPublicUrl}
               >
                 Copy URL
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="lg"
+                disabled={isActionPending}
+                onClick={deleteSubmission}
+              >
+                Delete
               </Button>
             </>
           )}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -71,10 +72,23 @@ export function AdminTable({
 }: {
   submissions: SubmissionRow[];
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(id: string, title: string) {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/submissions/${id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -163,6 +177,7 @@ export function AdminTable({
             <TableHead>{sortableHeader("createdAt", "Created")}</TableHead>
             <TableHead>{sortableHeader("status", "Status")}</TableHead>
             <TableHead>Public</TableHead>
+            <TableHead></TableHead>
           </tr>
         </TableHeader>
         <TableBody>
@@ -203,11 +218,28 @@ export function AdminTable({
                     <span className="text-text-muted text-xs">--</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(row.id, row.title)}
+                    disabled={deletingId === row.id}
+                    className="rounded-md p-1 text-text-muted hover:bg-status-danger-muted hover:text-status-danger transition-colors disabled:opacity-50"
+                    title="Delete"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
+                  </button>
+                </TableCell>
               </TableRow>
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-text-muted">
+              <TableCell colSpan={7} className="py-8 text-center text-text-muted">
                 No submissions match the current filters.
               </TableCell>
             </TableRow>

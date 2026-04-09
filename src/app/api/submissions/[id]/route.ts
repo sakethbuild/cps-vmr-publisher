@@ -18,6 +18,34 @@ type SubmissionRouteProps = {
   }>;
 };
 
+export async function DELETE(_request: Request, { params }: SubmissionRouteProps) {
+  const authorized = await requireInternalAccess();
+  if (!authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id } = await params;
+    const submission = await prisma.submission.findUnique({ where: { id } });
+
+    if (!submission) {
+      return NextResponse.json({ error: "Submission not found." }, { status: 404 });
+    }
+
+    // Cascade delete handles SubmissionPerson records
+    await prisma.submission.delete({ where: { id } });
+
+    return NextResponse.json({
+      message: "Submission deleted.",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Could not delete submission." },
+      { status: 400 },
+    );
+  }
+}
+
 export async function PATCH(request: Request, { params }: SubmissionRouteProps) {
   await requireInternalAccess();
 
