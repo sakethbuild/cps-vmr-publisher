@@ -297,24 +297,14 @@ export function SubmissionEditor({
       <form className="space-y-8" onSubmit={submitForm}>
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-                {mode === "create" ? "New submission" : "Admin editor"}
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-                {mode === "create"
-                  ? "Capture a new VMR submission"
-                  : "Review and publish this VMR"}
+            <div className="flex w-full items-center justify-between gap-4">
+              <h2 className="text-2xl font-semibold text-slate-950">
+                {mode === "create" ? "Submit a VMR" : "Review and publish this VMR"}
               </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-                This internal workflow keeps the CPS team’s review process in one
-                place, then turns approved entries into live public pages.
-              </p>
+              {mode === "edit" ? (
+                <StatusBadge status={currentStatus} />
+              ) : null}
             </div>
-
-            {mode === "edit" ? (
-              <StatusBadge status={currentStatus} />
-            ) : null}
           </div>
 
           {feedback ? (
@@ -568,146 +558,62 @@ export function SubmissionEditor({
       </form>
 
       <aside className="space-y-6 xl:sticky xl:top-8 xl:self-start">
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+
+        {/* Admin-only: YouTube + publish controls */}
+        {mode === "edit" && submissionId ? (
+          <div className="rounded-[2rem] border border-amber-200 bg-[linear-gradient(135deg,#fff8eb,white)] p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
+              YouTube URL
+            </p>
+            <input
+              type="url"
+              value={youtubeDraftValue}
+              onChange={(event) => setYoutubeDraftValue(event.target.value)}
+              className="mt-4 w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+              placeholder="https://youtube.com/..."
+            />
+            <button
+              type="button"
+              onClick={updateYoutubeUrl}
+              disabled={isYoutubePending}
+              className="mt-3 w-full rounded-full bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
+            >
+              {isYoutubePending ? "Updating..." : "Save YouTube URL"}
+            </button>
+          </div>
+        ) : null}
+
+        {/* Admin-only: public URL */}
+        {mode === "edit" && publicUrl ? (
           <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-              Operations status
+              Live URL
             </p>
-            <div className="mt-4 space-y-3 text-sm text-slate-700">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">Current workflow</span>
-                <StatusBadge status={currentStatus} />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">Upload on file</span>
-                <span className="font-semibold text-slate-900">
-                  {hasUpload ? "Yes" : "Not yet"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">YouTube required</span>
-                <span className="font-semibold text-slate-900">
-                  {requiresYoutube ? "Yes" : "No"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">Public page live</span>
-                <span className="font-semibold text-slate-900">
-                  {isPublished ? "Yes" : "No"}
-                </span>
-              </div>
-            </div>
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 block truncate text-sm font-semibold text-sky-700 underline decoration-sky-300 underline-offset-3"
+            >
+              {publicUrl}
+            </a>
+            <button
+              type="button"
+              disabled={isCopyPending}
+              onClick={copyPublicUrl}
+              className="mt-3 w-full rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Copy URL
+            </button>
           </div>
+        ) : null}
 
-          {mode === "edit" && submissionId ? (
-            <div className="rounded-[2rem] border border-amber-200 bg-[linear-gradient(135deg,#fff8eb,white)] p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
-                YouTube workflow
-              </p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                Add or update the YouTube link here. The publish status refreshes
-                automatically.
-              </p>
-              <input
-                type="url"
-                value={youtubeDraftValue}
-                onChange={(event) => setYoutubeDraftValue(event.target.value)}
-                className="mt-4 w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
-                placeholder="https://youtube.com/..."
-              />
-              <button
-                type="button"
-                onClick={updateYoutubeUrl}
-                disabled={isYoutubePending}
-                className="mt-4 w-full rounded-full bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
-              >
-                {isYoutubePending ? "Updating..." : "Add/Update YouTube URL"}
-              </button>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#fff7ed,white_45%,#eff6ff)] p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
-            Generated title preview
-          </p>
-          <p className="mt-3 text-xl font-semibold leading-8 text-slate-950">
-            {titlePreview}
-          </p>
-        </section>
-
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
+        {/* Live preview — always shown */}
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-            Linked names preview
+            Preview
           </p>
-          <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
-            <p>
-              <span className="font-semibold text-slate-900">Presenters:</span>
-            </p>
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
-              <PeoplePreview
-                people={presentersPreview}
-                emptyLabel="No presenters yet"
-              />
-            </div>
-            <p>
-              <span className="font-semibold text-slate-900">Discussants:</span>
-            </p>
-            <div className="rounded-2xl bg-slate-50 px-4 py-3">
-              <PeoplePreview
-                people={discussantsPreview}
-                emptyLabel="No discussants yet"
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-            Upload details
-          </p>
-          <div className="mt-4 space-y-4 text-sm leading-7 text-slate-700">
-            <p>
-              <span className="font-semibold text-slate-900">Current file:</span>{" "}
-              {selectedFile?.name ?? state.existingFileName ?? "None yet"}
-            </p>
-            {state.templateType === "sunday_fundamentals" && previewImageUrl ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                Generated PNG preview prepared for the public page and WordPress handoff.
-              </div>
-            ) : null}
-            {uploadUrl ? (
-              <a
-                href={uploadUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
-              >
-                Open stored file
-              </a>
-            ) : null}
-            {previewImageUrl ? (
-              <Image
-                src={previewImageUrl}
-                alt="Preview upload"
-                width={1200}
-                height={900}
-                className="w-full rounded-[1.5rem] border border-slate-200 object-cover"
-                unoptimized
-              />
-            ) : null}
-            <p className="text-xs leading-6 text-slate-500">
-              Linked names preview text: {renderLinkedPeopleText(presentersPreview) || "No presenters"} /{" "}
-              {renderLinkedPeopleText(discussantsPreview) || "No discussants"}
-            </p>
-          </div>
-        </section>
-
-        <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#f8fafc,white)] p-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-          <p className="px-2 pt-2 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-            Live public page preview
-          </p>
-          <div className="mt-3">
+          <div className="mt-4">
             <SubmissionPublicView
               templateType={state.templateType}
               title={titlePreview}
@@ -719,69 +625,11 @@ export function SubmissionEditor({
               previewImageUrl={previewImageUrl}
               notes={state.notes}
               youtubeUrl={state.youtubeUrl}
-              className="shadow-none"
+              className="shadow-none border-0 p-0"
             />
           </div>
         </section>
 
-        {mode === "edit" ? (
-          <>
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-                Public page status
-              </p>
-              <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
-                <p>
-                  <span className="font-semibold text-slate-900">Live URL:</span>{" "}
-                  {publicUrl ? (
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-3"
-                    >
-                      Open public page
-                    </a>
-                  ) : (
-                    "Publish this submission to generate its public page URL."
-                  )}
-                </p>
-                <button
-                  type="button"
-                  disabled={isCopyPending || !publicUrl}
-                  onClick={copyPublicUrl}
-                  className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Copy Public URL
-                </button>
-              </div>
-            </section>
-
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-                WordPress handoff
-              </p>
-              <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
-                <p>
-                  <span className="font-semibold text-slate-900">Suggested page title:</span>{" "}
-                  {titlePreview}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Suggested link label:</span>{" "}
-                  {buildWordPressLinkLabel(titlePreview)}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Public URL:</span>{" "}
-                  {publicUrl ?? "Publish first to generate the final link."}
-                </p>
-                <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  In WordPress, create or update the matching CPS page title and add a
-                  clear call-to-action link that points to this public VMR page.
-                </p>
-              </div>
-            </section>
-          </>
-        ) : null}
       </aside>
     </div>
   );
@@ -860,21 +708,4 @@ function PeopleSection({
                     : people.filter((_, currentIndex) => currentIndex !== index),
                 )
               }
-              className="rounded-full border border-rose-200 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={() => onChange([...people, emptyPerson()])}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
-        >
-          {addLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
+              className="rounded-full border border-rose-200 px-4 py
