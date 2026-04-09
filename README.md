@@ -1,6 +1,8 @@
 # CPS VMR Submissions
 
-Standalone internal prototype web app for CPS team members to submit, review, and prepare Virtual Morning Report entries before later moving the feature into an existing Vercel app.
+Standalone internal prototype web app for CPS team members to submit, review, and publish Virtual Morning Report pages.
+
+The app is now the source of truth. When admin publishes a submission, it becomes a live public page in this app. WordPress stays manual: create one CPS WordPress page per VMR and link visitors to the public page.
 
 ## Stack
 
@@ -10,9 +12,9 @@ Standalone internal prototype web app for CPS team members to submit, review, an
 - Prisma
 - SQLite for local development
 
-## What version 1 includes
+## What this version includes
 
-- Submission form for these template types:
+- Submission form for:
   - `standard`
   - `raphael_medina_subspecialty`
   - `img_vmr`
@@ -21,20 +23,47 @@ Standalone internal prototype web app for CPS team members to submit, review, an
 - Structured presenters and discussants with link normalization
 - Consistent `Month Day, Year` date formatting
 - Automatic title generation
-- Status workflow with ready rules
+- Status workflow for review and publishing
+- Public archive and public submission pages
 - Local file storage behind a storage service abstraction
 - Sunday Fundamentals image/PDF support
 - Sunday PDF first-page conversion to PNG
-- Admin dashboard for filtering, reviewing, editing, and mock publishing
-- WordPress publishing service with both mock and real modes
+- Admin dashboard for review, editing, publish, unpublish, and WordPress handoff
 
-## What version 1 does not include
+## What this version does not include
 
 - Real authentication
 - Email ingestion
 - Automatic YouTube lookup
 - Past episodes automation
+- Automatic WordPress publishing
 - Elementor automation
+
+## Main workflow
+
+1. A team member submits a VMR.
+2. Admin reviews and edits it in `/admin`.
+3. When it is ready, admin clicks `Publish Public Page`.
+4. The app makes the VMR live at `/vmr/[slug]`.
+5. Admin copies the public URL and adds it to the matching CPS WordPress page.
+
+## Statuses
+
+- `submitted`
+- `awaiting_youtube`
+- `ready_to_publish`
+- `published`
+
+Rules:
+
+- `standard`, `raphael_medina_subspecialty`, and `img_vmr`
+  - need required fields, upload, and YouTube URL before they become `ready_to_publish`
+- `sunday_fundamentals`
+  - becomes `ready_to_publish` once required fields and upload are complete
+- `custom`
+  - becomes `ready_to_publish` once `customTitle` and `sessionDate` are complete
+- `published`
+  - means the public page is live
 
 ## Local setup
 
@@ -58,7 +87,7 @@ npm run prisma:generate
 npm run db:setup
 ```
 
-5. Seed example submissions for every template type:
+5. Seed example submissions:
 
 ```bash
 npm run prisma:seed
@@ -77,7 +106,9 @@ npm run dev
 - `/` overview page
 - `/submit` submission form
 - `/admin` admin dashboard
-- `/admin/submissions/[id]` submission detail and edit page
+- `/admin/submissions/[id]` admin detail/edit page
+- `/vmr` public archive
+- `/vmr/[slug]` public VMR page
 
 ## Environment variables
 
@@ -85,52 +116,30 @@ See `.env.example`:
 
 - `DATABASE_URL`
 - `STORAGE_ROOT`
-- `WORDPRESS_MODE`
-- `WORDPRESS_BASE_URL`
-- `WORDPRESS_USERNAME`
-- `WORDPRESS_APPLICATION_PASSWORD`
+- `APP_BASE_URL`
 
 ## Upload storage
 
 - Files are stored locally under the directory set by `STORAGE_ROOT`
 - Uploads are streamed back through app routes instead of exposing the storage folder directly
-- The storage layer is abstracted so it can later be replaced by Vercel Blob or another provider
+- The storage layer is abstracted so it can later be replaced with Vercel Blob or another provider
 
-## WordPress behavior
+## WordPress handoff
 
-- Default mode is `mock`
-- Mock mode simulates draft creation and stores:
-  - `wordpressPageId`
-  - `wordpressUrl`
-- `wordpressPrimaryMediaUrl`
-- `wordpressPreviewMediaUrl`
-- Real mode:
-  - authenticates with WordPress application-password credentials
-  - uploads relevant PDFs for standard, Raphael, IMG, and custom submissions when present
-  - uploads the Sunday Fundamentals preview image asset
-  - creates a draft page and stores the returned page ID and page URL
-  - keeps Elementor automation out of scope and leaves TODO markers for later integration
+This app does not create WordPress pages.
 
-## WordPress credential setup
+Instead:
 
-1. In WordPress, create an Application Password for the account that should create drafts and upload media.
-2. Update your local `.env` values:
+1. Publish the submission in this app.
+2. Copy the public URL from the admin detail page.
+3. Create or update the matching CPS WordPress page manually.
+4. Add a clear CTA link to the public VMR page.
 
-```bash
-WORDPRESS_MODE="real"
-WORDPRESS_BASE_URL="https://your-wordpress-site.com"
-WORDPRESS_USERNAME="your-wordpress-username"
-WORDPRESS_APPLICATION_PASSWORD="your application password"
-```
+Recommended WordPress pattern:
 
-3. Restart the dev server after changing `.env`.
-4. Use the admin detail page and click `Create WordPress Draft`.
-
-If you want to return to safe local simulation, set:
-
-```bash
-WORDPRESS_MODE="mock"
-```
+- one WordPress page per VMR
+- the WordPress page title matches the VMR title
+- the page body contains a simple link to the public VMR page
 
 ## Development commands
 
@@ -145,45 +154,51 @@ npm run prisma:seed
 
 ## Manual test checklist
 
-- Start in mock mode and confirm `Create WordPress Draft` stores a mock page ID and URL.
-- Open a standard, Raphael, or IMG submission without a YouTube URL and confirm status stays `awaiting_youtube`.
-- Add a YouTube URL on the detail page and confirm status moves to `ready_for_draft`.
-- Upload a Sunday Fundamentals PDF and confirm the generated preview image appears in the admin detail view.
-- Switch to real mode with valid WordPress credentials and create a draft for:
-  - one PDF-based submission
-  - one Sunday Fundamentals submission
-  - one custom submission
-- In WordPress, confirm:
-  - the media library contains the uploaded PDF when relevant
-  - the media library contains the Sunday preview image
-  - the page is created as a draft
-  - the draft title matches the generated title or custom title
-  - the draft content contains the correct placeholder structure
-- Switch back to mock mode and confirm the safe flow still works.
+- Create a new standard submission without a YouTube URL and confirm status becomes `awaiting_youtube`.
+- Add a YouTube URL on the detail page and confirm status moves to `ready_to_publish`.
+- Publish the submission and confirm:
+  - status becomes `published`
+  - a public URL appears on the detail page
+  - the public route loads
+- Unpublish the submission and confirm:
+  - the public route no longer works
+  - the submission moves back into a non-public review status
+- Open `/vmr` and confirm only published submissions appear there.
+- Open a published public page and confirm presenter/discussant links work correctly.
+- Upload a Sunday Fundamentals PDF and confirm:
+  - the first page is converted to PNG
+  - the PNG is shown in admin
+  - the public page uses the image preview
+- Confirm the WordPress handoff panel shows:
+  - the public URL
+  - the suggested page title
+  - the suggested link label
 
 ## Important TODO points
 
 - `src/lib/auth.ts`
-  - Replace the internal prototype no-op with real authentication and authorization
+  - replace the internal prototype no-op with real authentication and authorization
 - `src/lib/storage/index.ts`
-  - Replace local disk storage with Vercel Blob or another production storage provider
-- `src/lib/wordpress/real-wordpress-publisher.ts`
-  - Extend the placeholder draft content into the final Elementor/template automation flow
+  - replace local disk storage with Vercel Blob or another production storage provider
+- public hosting
+  - optionally move the public pages from the app URL to a CPS-branded subdomain later
 
 ## Seed data
 
 The seed script creates five example submissions:
 
 - one for each template type
-- mixed workflow states
-- local sample files for previews and draft-link testing
+- mixed statuses
+- published examples for public-page testing
+- local sample files for previews and download testing
 
 ## Notes for future integration
 
-- Keep the storage and WordPress services behind their interfaces
+- Keep the storage service behind its interface
 - Keep admin access logic behind the auth placeholder
 - When moving into the main app, reuse the shared utilities for:
   - title generation
   - status calculation
   - person link normalization
   - filename sanitization
+  - slug generation

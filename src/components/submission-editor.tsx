@@ -7,14 +7,15 @@ import { useState, useTransition } from "react";
 import type { SubmissionStatus, TemplateType } from "@prisma/client";
 
 import { PeoplePreview } from "@/components/people-preview";
-import { StatusBadge, formatStatusLabel } from "@/components/status-badge";
-import { WordPressPreview } from "@/components/wordpress-preview";
+import { StatusBadge } from "@/components/status-badge";
+import { SubmissionPublicView } from "@/components/submission-public-view";
 import {
   ALLOWED_UPLOAD_LABELS,
   PERSON_LINK_TYPE_OPTIONS,
-  SUBMISSION_STATUS_OPTIONS,
   TEMPLATE_TYPE_OPTIONS,
 } from "@/lib/constants";
+import { formatDisplayDate } from "@/lib/dates";
+import { buildWordPressLinkLabel } from "@/lib/public-pages";
 import { buildLinkedPeople, renderLinkedPeopleText } from "@/lib/preview";
 import { emptyPerson, type SubmissionFormState } from "@/lib/submission-form";
 import type { PersonInput } from "@/lib/submission-types";
@@ -25,6 +26,17 @@ const INPUT_CLASSNAME =
   "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-100";
 
 const TEXTAREA_CLASSNAME = `${INPUT_CLASSNAME} min-h-28 resize-y`;
+
+function toTitleCase(value: string): string {
+  return value.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+const PERSON_LINK_TYPE_LABELS: Record<(typeof PERSON_LINK_TYPE_OPTIONS)[number], string> = {
+  none: "No link",
+  x: "X (Twitter)",
+  instagram: "Instagram",
+  custom: "Custom URL",
+};
 
 function getAcceptValue(templateType: TemplateType) {
   if (templateType === "sunday_fundamentals") {
@@ -45,6 +57,7 @@ function getTitlePreview(state: SubmissionFormState) {
     subspecialty: state.subspecialty,
     residencyProgram: state.residencyProgram,
     customTitle: state.customTitle,
+    chiefComplaint: state.chiefComplaint,
   });
 }
 
@@ -64,16 +77,14 @@ export function SubmissionEditor({
   mode,
   uploadUrl,
   previewImageUrl,
-  wordpressUrl,
-  wordpressPageId,
+  publicUrl,
   submissionId,
 }: {
   initialState: SubmissionFormState;
   mode: "create" | "edit";
   uploadUrl?: string | null;
   previewImageUrl?: string | null;
-  wordpressUrl?: string | null;
-  wordpressPageId?: string | null;
+  publicUrl?: string | null;
   submissionId?: string;
 }) {
   const router = useRouter();
@@ -87,6 +98,7 @@ export function SubmissionEditor({
   const [isPending, startTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [isYoutubePending, startYoutubeTransition] = useTransition();
+  const [isCopyPending, startCopyTransition] = useTransition();
 
   const presentersPreview = buildLinkedPeople(state.presenters);
   const discussantsPreview = buildLinkedPeople(state.discussants);
@@ -95,6 +107,11 @@ export function SubmissionEditor({
     state.templateType,
   );
   const hasUpload = Boolean(selectedFile?.name || state.existingFileName);
+  const currentStatus = state.currentStatus ?? "submitted";
+  const isPublished = currentStatus === "published";
+  const sessionDateLabel = state.sessionDate
+    ? formatDisplayDate(state.sessionDate)
+    : null;
 
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,10 +131,6 @@ export function SubmissionEditor({
         formData.append("presenters", JSON.stringify(state.presenters));
         formData.append("discussants", JSON.stringify(state.discussants));
 
-        if (mode === "edit" && state.manualStatus) {
-          formData.append("manualStatus", state.manualStatus);
-        }
-
         if (selectedFile) {
           formData.append("primaryUpload", selectedFile);
         }
@@ -132,6 +145,7 @@ export function SubmissionEditor({
 
         const result = (await response.json()) as {
           id?: string;
+          status?: SubmissionStatus;
           message?: string;
           error?: string;
         };
@@ -144,6 +158,10 @@ export function SubmissionEditor({
           return;
         }
 
+        setState((current) => ({
+          ...current,
+          currentStatus: result.status ?? current.currentStatus,
+        }));
         setFeedback({
           tone: "success",
           message:
@@ -174,6 +192,7 @@ export function SubmissionEditor({
         const result = (await response.json()) as {
           error?: string;
           message?: string;
+          status?: SubmissionStatus;
         };
 
         if (!response.ok) {
@@ -184,6 +203,10 @@ export function SubmissionEditor({
           return;
         }
 
+        setState((current) => ({
+          ...current,
+          currentStatus: result.status ?? current.currentStatus,
+        }));
         setFeedback({
           tone: "success",
           message: result.message ?? successMessage,
@@ -230,7 +253,7 @@ export function SubmissionEditor({
         setState((current) => ({
           ...current,
           youtubeUrl: result.youtubeUrl ?? "",
-          manualStatus: result.status ?? current.manualStatus,
+          currentStatus: result.status ?? current.currentStatus,
         }));
         setYoutubeDraftValue(result.youtubeUrl ?? "");
         setFeedback({
@@ -238,6 +261,33 @@ export function SubmissionEditor({
           message: result.message ?? "YouTube URL updated.",
         });
         router.refresh();
+      })();
+    });
+  }
+
+  async function copyPublicUrl() {
+    if (!publicUrl) {
+      setFeedback({
+        tone: "error",
+        message: "Publish this submission first to generate its public URL.",
+      });
+      return;
+    }
+
+    startCopyTransition(() => {
+      void (async () => {
+        try {
+          await navigator.clipboard.writeText(publicUrl);
+          setFeedback({
+            tone: "success",
+            message: "Public URL copied.",
+          });
+        } catch {
+          setFeedback({
+            tone: "error",
+            message: "The URL could not be copied automatically.",
+          });
+        }
       })();
     });
   }
@@ -254,16 +304,16 @@ export function SubmissionEditor({
               <h2 className="mt-2 text-2xl font-semibold text-slate-950">
                 {mode === "create"
                   ? "Capture a new VMR submission"
-                  : "Edit submission details"}
+                  : "Review and publish this VMR"}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-                This internal prototype stores uploads locally, prepares the title,
-                and keeps the final WordPress preview text visible as you work.
+                This internal workflow keeps the CPS team’s review process in one
+                place, then turns approved entries into live public pages.
               </p>
             </div>
 
-            {mode === "edit" && state.manualStatus ? (
-              <StatusBadge status={state.manualStatus} />
+            {mode === "edit" ? (
+              <StatusBadge status={currentStatus} />
             ) : null}
           </div>
 
@@ -283,7 +333,7 @@ export function SubmissionEditor({
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             <label className="space-y-2">
               <span className="text-sm font-semibold text-slate-800">
-                Template type
+                Type of VMR
               </span>
               <select
                 value={state.templateType}
@@ -366,15 +416,21 @@ export function SubmissionEditor({
 
             <label className="space-y-2 md:col-span-2">
               <span className="text-sm font-semibold text-slate-800">
-                Chief complaint
+                Chief Concern
               </span>
               <input
                 value={state.chiefComplaint}
                 onChange={(event) =>
                   setState({ ...state, chiefComplaint: event.target.value })
                 }
+                onBlur={(event) =>
+                  setState((current) => ({
+                    ...current,
+                    chiefComplaint: toTitleCase(event.target.value),
+                  }))
+                }
                 className={INPUT_CLASSNAME}
-                placeholder="e.g. progressive dyspnea, chest pain, syncope"
+                placeholder="e.g. Progressive Dyspnea, Chest Pain, Syncope"
               />
             </label>
 
@@ -389,7 +445,7 @@ export function SubmissionEditor({
                   setState({ ...state, youtubeUrl: event.target.value })
                 }
                 className={INPUT_CLASSNAME}
-                placeholder="Optional until ready for draft where required"
+                placeholder="Paste link if available"
               />
             </label>
 
@@ -401,33 +457,9 @@ export function SubmissionEditor({
                   setState({ ...state, notes: event.target.value })
                 }
                 className={TEXTAREA_CLASSNAME}
-                placeholder="Internal notes. For Sunday Fundamentals this also powers the simple text block under the image."
+                placeholder="Public teaching points or supporting notes. Sunday Fundamentals uses this below the image."
               />
             </label>
-
-            {mode === "edit" ? (
-              <label className="space-y-2">
-                <span className="text-sm font-semibold text-slate-800">
-                  Status override
-                </span>
-                <select
-                  value={state.manualStatus ?? "submitted"}
-                  onChange={(event) =>
-                    setState({
-                      ...state,
-                      manualStatus: event.target.value as SubmissionStatus,
-                    })
-                  }
-                  className={INPUT_CLASSNAME}
-                >
-                  {SUBMISSION_STATUS_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {formatStatusLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
 
             <label className="space-y-2 md:col-span-2">
               <span className="text-sm font-semibold text-slate-800">
@@ -492,31 +524,42 @@ export function SubmissionEditor({
 
             {mode === "edit" && state.id ? (
               <>
+                {!isPublished ? (
+                  <button
+                    type="button"
+                    disabled={isActionPending}
+                    onClick={() =>
+                      runAction(
+                        `/api/submissions/${state.id}/publish`,
+                        "Submission published.",
+                      )
+                    }
+                    className="rounded-full border border-emerald-300 px-5 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Publish Public Page
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isActionPending}
+                    onClick={() =>
+                      runAction(
+                        `/api/submissions/${state.id}/unpublish`,
+                        "Submission unpublished.",
+                      )
+                    }
+                    className="rounded-full border border-amber-300 px-5 py-3 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Unpublish
+                  </button>
+                )}
                 <button
                   type="button"
-                  disabled={isActionPending}
-                  onClick={() =>
-                    runAction(
-                      `/api/submissions/${state.id}/mark-ready`,
-                      "Submission marked ready.",
-                    )
-                  }
-                  className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Mark ready
-                </button>
-                <button
-                  type="button"
-                  disabled={isActionPending}
-                  onClick={() =>
-                    runAction(
-                      `/api/submissions/${state.id}/create-draft`,
-                      "Mock WordPress draft created.",
-                    )
-                  }
+                  disabled={isCopyPending || !publicUrl}
+                  onClick={copyPublicUrl}
                   className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Create WordPress Draft
+                  Copy Public URL
                 </button>
               </>
             ) : null}
@@ -533,7 +576,7 @@ export function SubmissionEditor({
             <div className="mt-4 space-y-3 text-sm text-slate-700">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">Current workflow</span>
-                <StatusBadge status={state.manualStatus ?? "submitted"} />
+                <StatusBadge status={currentStatus} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">Upload on file</span>
@@ -547,6 +590,12 @@ export function SubmissionEditor({
                   {requiresYoutube ? "Yes" : "No"}
                 </span>
               </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Public page live</span>
+                <span className="font-semibold text-slate-900">
+                  {isPublished ? "Yes" : "No"}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -556,8 +605,8 @@ export function SubmissionEditor({
                 YouTube workflow
               </p>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                Use this quick action to add or update the YouTube URL and let the
-                status refresh automatically.
+                Add or update the YouTube link here. The publish status refreshes
+                automatically.
               </p>
               <input
                 type="url"
@@ -624,7 +673,7 @@ export function SubmissionEditor({
             </p>
             {state.templateType === "sunday_fundamentals" && previewImageUrl ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                Generated PNG preview prepared for later WordPress image publishing.
+                Generated PNG preview prepared for the public page and WordPress handoff.
               </div>
             ) : null}
             {uploadUrl ? (
@@ -654,43 +703,84 @@ export function SubmissionEditor({
           </div>
         </section>
 
-        <WordPressPreview
-          templateType={state.templateType}
-          presenters={presentersPreview}
-          discussants={discussantsPreview}
-          fileUrl={uploadUrl}
-          previewImageUrl={previewImageUrl}
-          notes={state.notes}
-          title={titlePreview}
-        />
+        <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#f8fafc,white)] p-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
+          <p className="px-2 pt-2 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
+            Live public page preview
+          </p>
+          <div className="mt-3">
+            <SubmissionPublicView
+              templateType={state.templateType}
+              title={titlePreview}
+              sessionDateLabel={sessionDateLabel}
+              chiefComplaint={state.chiefComplaint}
+              presenters={presentersPreview}
+              discussants={discussantsPreview}
+              fileUrl={uploadUrl}
+              previewImageUrl={previewImageUrl}
+              notes={state.notes}
+              youtubeUrl={state.youtubeUrl}
+              className="shadow-none"
+            />
+          </div>
+        </section>
 
         {mode === "edit" ? (
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-              WordPress draft state
-            </p>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
-              <p>
-                <span className="font-semibold text-slate-900">Draft page ID:</span>{" "}
-                {wordpressPageId ?? "Not created yet"}
+          <>
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
+                Public page status
               </p>
-              <p>
-                <span className="font-semibold text-slate-900">Draft URL:</span>{" "}
-                {wordpressUrl ? (
-                  <a
-                    href={wordpressUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-3"
-                  >
-                    Open draft
-                  </a>
-                ) : (
-                  "Not created yet"
-                )}
+              <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
+                <p>
+                  <span className="font-semibold text-slate-900">Live URL:</span>{" "}
+                  {publicUrl ? (
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-3"
+                    >
+                      Open public page
+                    </a>
+                  ) : (
+                    "Publish this submission to generate its public page URL."
+                  )}
+                </p>
+                <button
+                  type="button"
+                  disabled={isCopyPending || !publicUrl}
+                  onClick={copyPublicUrl}
+                  className="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Copy Public URL
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
+                WordPress handoff
               </p>
-            </div>
-          </section>
+              <div className="mt-4 space-y-3 text-sm leading-7 text-slate-700">
+                <p>
+                  <span className="font-semibold text-slate-900">Suggested page title:</span>{" "}
+                  {titlePreview}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Suggested link label:</span>{" "}
+                  {buildWordPressLinkLabel(titlePreview)}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Public URL:</span>{" "}
+                  {publicUrl ?? "Publish first to generate the final link."}
+                </p>
+                <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  In WordPress, create or update the matching CPS page title and add a
+                  clear call-to-action link that points to this public VMR page.
+                </p>
+              </div>
+            </section>
+          </>
         ) : null}
       </aside>
     </div>
@@ -716,16 +806,9 @@ function PeopleSection({
             {title}
           </p>
           <p className="mt-2 text-sm leading-7 text-slate-600">
-            Add names one row at a time. Handles automatically turn into the right public links.
+            Add names one row at a time.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => onChange([...people, emptyPerson()])}
-          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
-        >
-          {addLabel}
-        </button>
       </div>
 
       <div className="mt-6 space-y-4">
@@ -752,7 +835,7 @@ function PeopleSection({
             >
               {PERSON_LINK_TYPE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {PERSON_LINK_TYPE_LABELS[option]}
                 </option>
               ))}
             </select>
@@ -765,7 +848,7 @@ function PeopleSection({
                 )
               }
               className={INPUT_CLASSNAME}
-              placeholder="@handle or full URL"
+              placeholder="@handle or profile URL"
             />
 
             <button
@@ -783,6 +866,14 @@ function PeopleSection({
             </button>
           </div>
         ))}
+
+        <button
+          type="button"
+          onClick={() => onChange([...people, emptyPerson()])}
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
+        >
+          {addLabel}
+        </button>
       </div>
     </div>
   );

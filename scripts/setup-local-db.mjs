@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS "Submission" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "templateType" TEXT NOT NULL,
   "title" TEXT NOT NULL,
+  "slug" TEXT,
   "customTitle" TEXT,
   "subspecialty" TEXT,
   "residencyProgram" TEXT,
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS "Submission" (
   "youtubeUrl" TEXT,
   "notes" TEXT,
   "status" TEXT NOT NULL,
+  "publishedAt" DATETIME,
   "originalFileName" TEXT,
   "sanitizedFileName" TEXT,
   "fileMimeType" TEXT,
@@ -33,14 +35,12 @@ CREATE TABLE IF NOT EXISTS "Submission" (
   "storagePath" TEXT,
   "previewImagePath" TEXT,
   "previewImageMimeType" TEXT,
-  "wordpressPageId" TEXT,
-  "wordpressUrl" TEXT,
-  "wordpressPrimaryMediaUrl" TEXT,
-  "wordpressPreviewMediaUrl" TEXT,
-  "wordpressPublishedAt" DATETIME,
   "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS "Submission_slug_key"
+ON "Submission" ("slug");
 
 CREATE TABLE IF NOT EXISTS "SubmissionPerson" (
   "id" TEXT NOT NULL PRIMARY KEY,

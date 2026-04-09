@@ -9,8 +9,7 @@ export const TEMPLATE_TYPE_OPTIONS = [
 export const SUBMISSION_STATUS_OPTIONS = [
   "submitted",
   "awaiting_youtube",
-  "ready_for_draft",
-  "wordpress_draft_created",
+  "ready_to_publish",
   "published",
 ] as const;
 
@@ -35,7 +34,7 @@ export const ALLOWED_UPLOAD_LABELS: Record<string, string> = {
   standard: "PDF",
   raphael_medina_subspecialty: "PDF",
   img_vmr: "PDF",
-  sunday_fundamentals: "PNG, JPG, JPEG, or PDF",
+  sunday_fundamentals: "PNG, JPG, or PDF (PDF will be auto-converted to image)",
   custom: "Optional PDF",
 };
 

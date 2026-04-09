@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireInternalAccess } from "@/lib/auth";
-import { calculateSubmissionStatus } from "@/lib/statuses";
 import {
   buildSubmissionPayload,
   createPeopleData,
@@ -65,18 +64,9 @@ export async function PATCH(request: Request, { params }: SubmissionRouteProps) 
       data: {
         ...payload.data,
         status:
-          existingSubmission.status === "wordpress_draft_created" ||
           existingSubmission.status === "published"
             ? existingSubmission.status
-            : calculateSubmissionStatus({
-                templateType: payload.data.templateType,
-                sessionDate: payload.data.sessionDate,
-                subspecialty: payload.data.subspecialty,
-                residencyProgram: payload.data.residencyProgram,
-                customTitle: payload.data.customTitle,
-                hasUpload: Boolean(payload.data.storagePath),
-                youtubeUrl: payload.data.youtubeUrl,
-              }),
+            : payload.status,
         people: {
           deleteMany: {},
           create: people,
@@ -85,6 +75,8 @@ export async function PATCH(request: Request, { params }: SubmissionRouteProps) 
     });
 
     return NextResponse.json({
+      status:
+        existingSubmission.status === "published" ? "published" : payload.status,
       message: "Submission updated successfully.",
     });
   } catch (error) {

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SubmissionEditor } from "@/components/submission-editor";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDisplayDate } from "@/lib/dates";
+import { buildSubmissionPublicUrl } from "@/lib/public-pages";
 import { prisma } from "@/lib/prisma";
 import { toFormState } from "@/lib/submission";
 
@@ -45,8 +46,8 @@ export default async function SubmissionDetailPage({
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
               Session date: {formatDisplayDate(submission.sessionDate)}. Use this
-              screen to edit the submission, update the ready state, and create a
-              WordPress draft in mock mode.
+              screen to edit the submission, review the live preview, and publish
+              or unpublish its public page.
             </p>
           </div>
 
@@ -60,8 +61,7 @@ export default async function SubmissionDetailPage({
         submissionId={submission.id}
         uploadUrl={uploadUrl}
         previewImageUrl={previewImageUrl}
-        wordpressPageId={submission.wordpressPageId}
-        wordpressUrl={submission.wordpressUrl}
+        publicUrl={submission.slug ? buildSubmissionPublicUrl(submission.slug) : null}
       />
     </div>
   );

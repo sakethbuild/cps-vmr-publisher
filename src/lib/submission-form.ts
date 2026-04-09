@@ -5,7 +5,7 @@ import type { PersonInput, SubmissionFormInput } from "@/lib/submission-types";
 export type SubmissionFormState = SubmissionFormInput & {
   id?: string;
   existingFileName?: string | null;
-  manualStatus?: SubmissionStatus;
+  currentStatus?: SubmissionStatus;
 };
 
 export function emptyPerson(): PersonInput {
@@ -29,6 +29,7 @@ export function createEmptySubmissionFormState(
     youtubeUrl: "",
     notes: "",
     presenters: [emptyPerson()],
-    discussants: [emptyPerson()],
+    discussants: [emptyPerson(), emptyPerson()],
+    currentStatus: "submitted",
   };
 }

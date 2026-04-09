@@ -12,6 +12,7 @@ import {
 import { parseSessionDateInput } from "../src/lib/dates";
 import { buildSanitizedFilename } from "../src/lib/files";
 import { normalizePersonUrl } from "../src/lib/links";
+import { buildSubmissionSlug } from "../src/lib/public-pages";
 import { getStorageService } from "../src/lib/storage";
 import { generateSubmissionTitle } from "../src/lib/templates";
 
@@ -33,14 +34,11 @@ type SeedSubmission = {
   youtubeUrl?: string;
   notes?: string;
   status: SubmissionStatus;
+  slug?: string;
+  publishedAt?: Date;
   presenters: SeedPerson[];
   discussants: SeedPerson[];
   fileType: "pdf" | "png";
-  wordpressPageId?: string;
-  wordpressUrl?: string;
-  wordpressPrimaryMediaUrl?: string;
-  wordpressPreviewMediaUrl?: string;
-  wordpressPublishedAt?: Date;
 };
 
 function escapePdfText(value: string) {
@@ -187,12 +185,12 @@ const seedSubmissions: SeedSubmission[] = [
     subspecialty: "Cardiology",
     chiefComplaint: "New murmur with embolic stroke",
     youtubeUrl: "https://youtube.com/watch?v=cardio-example",
-    status: "ready_for_draft",
+    status: "ready_to_publish",
     presenters: [
       { fullName: "Dr. Raphael Medina", linkType: "x", handleOrUrl: "raphaelmedina" },
     ],
     discussants: [{ fullName: "Dr. Leila Thomas", linkType: "none" }],
-    notes: "Ready to publish into the subspecialty workflow.",
+    notes: "Ready to publish as soon as the final internal review is complete.",
     fileType: "pdf",
   },
   {
@@ -201,14 +199,13 @@ const seedSubmissions: SeedSubmission[] = [
     residencyProgram: "University of Cape Town Internal Medicine",
     chiefComplaint: "Fever and pancytopenia in a recent immigrant",
     youtubeUrl: "https://youtube.com/watch?v=img-example",
-    status: "wordpress_draft_created",
+    status: "published",
     presenters: [{ fullName: "Dr. Ali Hasan", linkType: "instagram", handleOrUrl: "@alihasan" }],
     discussants: [{ fullName: "Dr. Priya Singh", linkType: "custom", handleOrUrl: "https://example.com/priya-singh" }],
-    notes: "Mock WordPress draft already created for review.",
+    notes: "A published IMG VMR page that is already live for external readers.",
     fileType: "pdf",
-    wordpressPageId: "mock-img-001",
-    wordpressUrl: "https://mock-wordpress.local/drafts/img-virtual-morning-report-mock-img-001",
-    wordpressPrimaryMediaUrl: "https://mock-wordpress.local/media/img-virtual-morning-report-march-28-2026.pdf",
+    slug: "img-virtual-morning-report-university-of-cape-town-internal-medicine-march-28-2026",
+    publishedAt: new Date("2026-03-28T12:00:00.000Z"),
   },
   {
     templateType: "sunday_fundamentals",
@@ -220,10 +217,8 @@ const seedSubmissions: SeedSubmission[] = [
     notes:
       "A Sunday Fundamentals recap with a simple graphic and a short teaching paragraph below it.",
     fileType: "png",
-    wordpressPageId: "mock-sunday-001",
-    wordpressUrl: "https://mock-wordpress.local/drafts/sunday-fundamentals-vmr-mock-sunday-001",
-    wordpressPreviewMediaUrl: "https://mock-wordpress.local/media/sunday-fundamentals-vmr-april-5-2026.png",
-    wordpressPublishedAt: new Date("2026-04-05T12:00:00.000Z"),
+    slug: "sunday-fundamentals-vmr-april-5-2026",
+    publishedAt: new Date("2026-04-05T12:00:00.000Z"),
   },
   {
     templateType: "custom",
@@ -252,18 +247,22 @@ async function main() {
       seed.chiefComplaint,
     );
     const sessionDate = parseSessionDateInput(seed.sessionDate);
+    const title = generateSubmissionTitle({
+      templateType: seed.templateType,
+      sessionDate,
+      subspecialty: seed.subspecialty,
+      residencyProgram: seed.residencyProgram,
+      customTitle: seed.customTitle,
+    });
+    const slug =
+      seed.slug ?? (seed.status === "published" ? buildSubmissionSlug(title) : null);
 
     await prisma.submission.create({
       data: {
         id: submissionId,
         templateType: seed.templateType,
-        title: generateSubmissionTitle({
-          templateType: seed.templateType,
-          sessionDate,
-          subspecialty: seed.subspecialty,
-          residencyProgram: seed.residencyProgram,
-          customTitle: seed.customTitle,
-        }),
+        title,
+        slug,
         customTitle: seed.customTitle ?? null,
         subspecialty: seed.subspecialty ?? null,
         residencyProgram: seed.residencyProgram ?? null,
@@ -272,12 +271,8 @@ async function main() {
         youtubeUrl: seed.youtubeUrl ?? null,
         notes: seed.notes ?? null,
         status: seed.status,
+        publishedAt: seed.publishedAt ?? null,
         ...upload,
-        wordpressPageId: seed.wordpressPageId ?? null,
-        wordpressUrl: seed.wordpressUrl ?? null,
-        wordpressPrimaryMediaUrl: seed.wordpressPrimaryMediaUrl ?? null,
-        wordpressPreviewMediaUrl: seed.wordpressPreviewMediaUrl ?? null,
-        wordpressPublishedAt: seed.wordpressPublishedAt ?? null,
         people: {
           create: [
             ...createPeopleRecords("presenter", seed.presenters),

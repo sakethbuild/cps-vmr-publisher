@@ -68,7 +68,6 @@ export function parseSubmissionFormData(
     notes: normalizeOptional(formData.get("notes") as string | null),
     presenters: parsePeople(formData.get("presenters")),
     discussants: parsePeople(formData.get("discussants")),
-    manualStatus: normalizeOptional(formData.get("manualStatus") as string | null),
   });
 
   if (!result.success) {
@@ -205,6 +204,7 @@ export function buildSubmissionPayload(params: {
     subspecialty: params.input.subspecialty,
     residencyProgram: params.input.residencyProgram,
     customTitle: params.input.customTitle,
+    chiefComplaint: params.input.chiefComplaint,
   });
 
   const status = calculateSubmissionStatus({
@@ -215,7 +215,6 @@ export function buildSubmissionPayload(params: {
     customTitle: params.input.customTitle,
     hasUpload: Boolean(params.upload?.storagePath ?? params.existingSubmission?.storagePath),
     youtubeUrl: params.input.youtubeUrl,
-    manualStatus: params.input.manualStatus,
   });
 
   const originalFileName =
@@ -271,7 +270,6 @@ export function determineStatusForExistingSubmission(
   submission: Submission,
   overrides?: {
     youtubeUrl?: string | null;
-    manualStatus?: SubmissionStatus | null;
   },
 ) {
   return calculateSubmissionStatus({
@@ -282,7 +280,6 @@ export function determineStatusForExistingSubmission(
     customTitle: submission.customTitle,
     hasUpload: Boolean(submission.storagePath),
     youtubeUrl: overrides?.youtubeUrl ?? submission.youtubeUrl,
-    manualStatus: overrides?.manualStatus ?? null,
   });
 }
 
@@ -330,7 +327,7 @@ export function toFormState(
     notes: submission.notes ?? "",
     presenters: presenters.length ? presenters : [emptyPerson()],
     discussants: discussants.length ? discussants : [emptyPerson()],
-    manualStatus: submission.status,
+    currentStatus: submission.status,
     existingFileName: submission.originalFileName,
   };
 }

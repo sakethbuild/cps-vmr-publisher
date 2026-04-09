@@ -4,10 +4,9 @@ export function getEnv() {
   return {
     databaseUrl: process.env.DATABASE_URL ?? "file:./dev.db",
     storageRoot: path.resolve(process.cwd(), process.env.STORAGE_ROOT ?? "./storage"),
-    wordpressMode: process.env.WORDPRESS_MODE ?? "mock",
-    wordpressBaseUrl: process.env.WORDPRESS_BASE_URL ?? "",
-    wordpressUsername: process.env.WORDPRESS_USERNAME ?? "",
-    wordpressApplicationPassword:
-      process.env.WORDPRESS_APPLICATION_PASSWORD ?? "",
+    appBaseUrl: (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(
+      /\/+$/,
+      "",
+    ),
   };
 }

@@ -18,8 +18,7 @@ enum TemplateType {
 enum SubmissionStatus {
   submitted
   awaiting_youtube
-  ready_for_draft
-  wordpress_draft_created
+  ready_to_publish
   published
 }
 
@@ -39,6 +38,7 @@ model Submission {
   id                   String           @id @default(cuid())
   templateType         TemplateType
   title                String
+  slug                 String?          @unique
   customTitle          String?
   subspecialty         String?
   residencyProgram     String?
@@ -47,6 +47,7 @@ model Submission {
   youtubeUrl           String?
   notes                String?
   status               SubmissionStatus
+  publishedAt          DateTime?
   originalFileName     String?
   sanitizedFileName    String?
   fileMimeType         String?
@@ -54,11 +55,6 @@ model Submission {
   storagePath          String?
   previewImagePath     String?
   previewImageMimeType String?
-  wordpressPageId      String?
-  wordpressUrl         String?
-  wordpressPrimaryMediaUrl String?
-  wordpressPreviewMediaUrl String?
-  wordpressPublishedAt DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   people               SubmissionPerson[]

@@ -6,13 +6,13 @@ import { determineStatusForExistingSubmission } from "@/lib/submission";
 
 export const runtime = "nodejs";
 
-type MarkReadyRouteProps = {
+type UnpublishRouteProps = {
   params: Promise<{
     id: string;
   }>;
 };
 
-export async function POST(_: Request, { params }: MarkReadyRouteProps) {
+export async function POST(_: Request, { params }: UnpublishRouteProps) {
   await requireInternalAccess();
 
   const { id } = await params;
@@ -24,24 +24,21 @@ export async function POST(_: Request, { params }: MarkReadyRouteProps) {
     return NextResponse.json({ error: "Submission not found." }, { status: 404 });
   }
 
-  const nextStatus =
-    submission.templateType === "custom"
-      ? "ready_for_draft"
-      : determineStatusForExistingSubmission(submission, {
-          manualStatus: "ready_for_draft",
-        });
+  const nextStatus = determineStatusForExistingSubmission(submission);
 
-  await prisma.submission.update({
+  const updated = await prisma.submission.update({
     where: { id: submission.id },
     data: {
       status: nextStatus,
+      publishedAt: null,
     },
   });
 
   return NextResponse.json({
+    status: updated.status,
     message:
-      nextStatus === "ready_for_draft"
-        ? "Submission marked ready for draft."
-        : "Submission still needs a YouTube URL before it can become ready.",
+      nextStatus === "ready_to_publish"
+        ? "Submission removed from the public site and moved back to ready to publish."
+        : "Submission removed from the public site and moved back into review.",
   });
 }

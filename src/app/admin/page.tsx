@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/status-badge";
+import { buildSubmissionPublicPath } from "@/lib/public-pages";
 import { SUBMISSION_STATUS_OPTIONS } from "@/lib/constants";
 import { formatDisplayDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
@@ -40,11 +41,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     groupedStatuses.find((group) => group.status === "awaiting_youtube")?._count
       ._all ?? 0;
   const readyCount =
-    groupedStatuses.find((group) => group.status === "ready_for_draft")?._count
+    groupedStatuses.find((group) => group.status === "ready_to_publish")?._count
       ._all ?? 0;
-  const draftCount =
-    groupedStatuses.find((group) => group.status === "wordpress_draft_created")
-      ?._count._all ?? 0;
+  const publishedCount =
+    groupedStatuses.find((group) => group.status === "published")?._count._all ??
+    0;
 
   return (
     <div className="space-y-6">
@@ -55,11 +56,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               Admin dashboard
             </p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-              Review and prepare VMR submissions
+              Review and publish VMR submissions
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-              Filter by workflow status, open any submission, edit it, mark it
-              ready, and create a safe mock WordPress draft.
+              Filter by workflow status, review submissions, update content, and
+              publish live public pages when everything is ready.
             </p>
           </div>
 
@@ -117,15 +118,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
         <div className="rounded-[2rem] border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5,white)] p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">
-            Ready for draft
+            Ready to publish
           </p>
           <p className="mt-3 text-3xl font-semibold text-slate-950">{readyCount}</p>
         </div>
         <div className="rounded-[2rem] border border-sky-200 bg-[linear-gradient(135deg,#eff6ff,white)] p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.4)]">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">
-            Drafts created
+            Public pages live
           </p>
-          <p className="mt-3 text-3xl font-semibold text-slate-950">{draftCount}</p>
+          <p className="mt-3 text-3xl font-semibold text-slate-950">{publishedCount}</p>
         </div>
       </section>
 
@@ -138,6 +139,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <th className="px-4 py-3 font-semibold">Session date</th>
               <th className="px-4 py-3 font-semibold">Created</th>
               <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Public page</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -164,11 +166,23 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <td className="px-4 py-4">
                     <StatusBadge status={submission.status} />
                   </td>
+                  <td className="px-4 py-4">
+                    {submission.status === "published" && submission.slug ? (
+                      <Link
+                        href={buildSubmissionPublicPath(submission.slug)}
+                        className="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-3"
+                      >
+                        Open live page
+                      </Link>
+                    ) : (
+                      <span className="text-slate-400">Not live yet</span>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td className="px-4 py-8 text-slate-500" colSpan={5}>
+                <td className="px-4 py-8 text-slate-500" colSpan={6}>
                   No submissions match the current filter.
                 </td>
               </tr>

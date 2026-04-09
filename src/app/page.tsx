@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/status-badge";
+import { buildSubmissionPublicPath } from "@/lib/public-pages";
 import { formatDisplayDate } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 
@@ -31,12 +32,12 @@ export default async function HomePage() {
             Virtual Morning Report workflow
           </p>
           <h2 className="mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-            Submit, review, and prep VMR pages before they reach WordPress.
+            Submit, review, and publish CPS VMR pages from one internal tool.
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600">
             This prototype keeps the CPS team’s submission flow in one place:
-            structured presenters and discussants, clean upload handling, ready
-            states, and safe mock publishing for draft testing.
+            structured presenters and discussants, clean upload handling, public
+            publishing controls, and a simple WordPress handoff by link.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -50,6 +51,12 @@ export default async function HomePage() {
               className="rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
             >
               Open admin dashboard
+            </Link>
+            <Link
+              href="/vmr"
+              className="rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
+            >
+              View public archive
             </Link>
           </div>
         </div>
@@ -125,12 +132,21 @@ export default async function HomePage() {
                 submissions.map((submission) => (
                   <tr key={submission.id}>
                     <td className="px-4 py-4 font-medium text-slate-900">
-                      <Link
-                        href={`/admin/submissions/${submission.id}`}
-                        className="transition hover:text-sky-700"
-                      >
-                        {submission.title}
-                      </Link>
+                      {submission.status === "published" && submission.slug ? (
+                        <Link
+                          href={buildSubmissionPublicPath(submission.slug)}
+                          className="transition hover:text-sky-700"
+                        >
+                          {submission.title}
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/admin/submissions/${submission.id}`}
+                          className="transition hover:text-sky-700"
+                        >
+                          {submission.title}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-slate-600">
                       {formatDisplayDate(submission.sessionDate)}

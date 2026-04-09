@@ -1,0 +1,42 @@
+
+> cps-vmr-submissions@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.18.96.1:3000
+- Environments: .env
+
+✓ Starting...
+✓ Ready in 3s
+○ Compiling /vmr ...
+ HEAD /vmr 200 in 4.8s (compile: 4.0s, render: 783ms)
+ GET /vmr 200 in 124ms (compile: 15ms, render: 109ms)
+ GET /admin 200 in 626ms (compile: 523ms, render: 103ms)
+ GET /submit 200 in 548ms (compile: 522ms, render: 27ms)
+ GET /vmr 200 in 38ms (compile: 9ms, render: 29ms)
+ GET /admin 200 in 51ms (compile: 5ms, render: 45ms)
+ GET /submit 200 in 26ms (compile: 5ms, render: 20ms)
+ POST /api/submissions 200 in 2.1s (compile: 1999ms, render: 113ms)
+ GET /admin/submissions/33075b79-ceef-4b71-99b2-2d66e1d0c9b6 200 in 2.6s (compile: 2.6s, render: 43ms)
+ GET /admin 200 in 53ms (compile: 6ms, render: 47ms)
+ GET /submit 200 in 19ms (compile: 4ms, render: 16ms)
+✓ Compiled in 42ms
+ GET /vmr 200 in 25ms (compile: 4ms, render: 21ms)
+ GET /vmr 200 in 284ms (compile: 125ms, render: 159ms)
+ GET /vmr 200 in 87ms (compile: 6ms, render: 80ms)
+ GET /vmr 200 in 44ms (compile: 4ms, render: 39ms)
+ GET / 200 in 227ms (compile: 190ms, render: 36ms)
+ GET / 200 in 32ms (compile: 3ms, render: 30ms)
+✓ Compiled in 33ms
+ GET / 200 in 58ms (compile: 5ms, render: 53ms)
+ GET / 200 in 35ms (compile: 5ms, render: 30ms)
+✓ Compiled in 32ms
+ GET /admin 200 in 161ms (compile: 78ms, render: 83ms)
+ GET /admin 200 in 254ms (compile: 94ms, render: 160ms)
+ GET /admin 200 in 124ms (compile: 8ms, render: 117ms)
+ GET /admin 200 in 85ms (compile: 4ms, render: 80ms)
+ GET /admin 200 in 68ms (compile: 4ms, render: 64ms)
+✓ Compiled in 38ms
+ GET /admin 200 in 37ms (compile: 5ms, render: 32ms)
+✓ Compiled in 32ms

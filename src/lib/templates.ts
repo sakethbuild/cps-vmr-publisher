@@ -8,18 +8,26 @@ export function generateSubmissionTitle(input: {
   subspecialty?: string | null;
   residencyProgram?: string | null;
   customTitle?: string | null;
+  chiefComplaint?: string | null;
 }): string {
   const formattedDate = formatDisplayDate(input.sessionDate);
+  const chiefConcern = input.chiefComplaint?.trim();
+  const withChiefConcern = (baseTitle: string) =>
+    chiefConcern ? `${baseTitle} - ${chiefConcern}` : baseTitle;
 
   switch (input.templateType) {
     case "standard":
-      return `Virtual Morning Report - ${formattedDate}`;
+      return withChiefConcern(`Virtual Morning Report - ${formattedDate}`);
     case "raphael_medina_subspecialty":
-      return `Raphael Medina Subspecialty VMR - ${input.subspecialty?.trim() ?? ""} - ${formattedDate}`;
+      return withChiefConcern(
+        `Raphael Medina Subspecialty VMR - ${input.subspecialty?.trim() ?? ""} - ${formattedDate}`,
+      );
     case "img_vmr":
-      return `IMG Virtual Morning Report - ${input.residencyProgram?.trim() ?? ""} - ${formattedDate}`;
+      return withChiefConcern(
+        `IMG Virtual Morning Report - ${input.residencyProgram?.trim() ?? ""} - ${formattedDate}`,
+      );
     case "sunday_fundamentals":
-      return `Sunday Fundamentals VMR - ${formattedDate}`;
+      return withChiefConcern(`Sunday Fundamentals VMR - ${formattedDate}`);
     case "custom":
       return input.customTitle?.trim() ?? "";
   }

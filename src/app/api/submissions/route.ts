@@ -59,6 +59,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       id: submission.id,
+      status: submission.status,
       message: "Submission saved and added to the admin dashboard.",
     });
   } catch (error) {

@@ -1,9 +1,7 @@
-import type { SubmissionStatus } from "@prisma/client";
 import { z } from "zod";
 
 import {
   PERSON_LINK_TYPE_OPTIONS,
-  SUBMISSION_STATUS_OPTIONS,
   TEMPLATE_TYPE_OPTIONS,
 } from "@/lib/constants";
 
@@ -29,7 +27,6 @@ export const submissionSchema = z
     discussants: z
       .array(personSchema)
       .min(1, "At least one discussant is required."),
-    manualStatus: z.enum(SUBMISSION_STATUS_OPTIONS).optional(),
   })
   .superRefine((value, ctx) => {
     if (
@@ -74,6 +71,4 @@ export const submissionSchema = z
 
 export type PersonInput = z.infer<typeof personSchema>;
 
-export type SubmissionFormInput = z.infer<typeof submissionSchema> & {
-  manualStatus?: SubmissionStatus;
-};
+export type SubmissionFormInput = z.infer<typeof submissionSchema>;

@@ -16,13 +16,12 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "CPS VMR Submissions",
-  description: "Internal CPS Virtual Morning Report submission prototype",
+  description: "Internal CPS Virtual Morning Report publishing prototype",
 };
 
 const navigation = [
-  { href: "/", label: "Overview" },
   { href: "/submit", label: "Submit VMR" },
-  { href: "/admin", label: "Admin dashboard" },
+  { href: "/admin", label: "Admin" },
 ];
 
 function AppNavigation() {
@@ -58,7 +57,7 @@ function AppFooter() {
   return (
     <footer className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-8 text-xs uppercase tracking-[0.2em] text-slate-500">
       <span>CPS VMR Submissions</span>
-      <span>Mock WordPress mode ready for local testing</span>
+      <span>Public publishing workflow ready for local testing</span>
     </footer>
   );
 }

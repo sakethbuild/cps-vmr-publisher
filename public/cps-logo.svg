@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Black background with rounded corners -->
+  <rect width="200" height="200" rx="28" ry="28" fill="#000000"/>
+  <!-- Subtle grey arc top-left -->
+  <path d="M0 0 Q0 0 0 28 L0 110 Q30 10 120 0 Z" fill="#5a5a5a" opacity="0.55"/>
+  <!-- Dx text -->
+  <text x="100" y="128" font-family="Georgia, 'Times New Roman', serif" font-size="96" font-weight="400" fill="#ffffff" text-anchor="middle" letter-spacing="-2">Dx</text>
+  <!-- White pill badge -->
+  <rect x="18" y="155" width="164" height="32" rx="16" ry="16" fill="#ffffff"/>
+  <text x="100" y="176" font-family="Georgia, 'Times New Roman', serif" font-size="12.5" fill="#1a1a1a" text-anchor="middle" letter-spacing="0.3">The Clinical Problem Solvers</text>
+</svg>

@@ -12,8 +12,8 @@ export default function SubmitPage() {
           Submit a new CPS VMR
         </h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          Complete the form once, preview the generated title and WordPress text
-          block, and hand it off to the admin workflow for draft preparation.
+          Complete the form once, preview the final public page, and hand it off
+          to the admin workflow for review and publishing.
         </p>
       </section>
 

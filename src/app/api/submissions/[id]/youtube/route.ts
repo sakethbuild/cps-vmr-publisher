@@ -36,7 +36,6 @@ export async function POST(request: Request, { params }: UpdateYoutubeRouteProps
     }
 
     const status =
-      submission.status === "wordpress_draft_created" ||
       submission.status === "published"
         ? submission.status
         : determineStatusForExistingSubmission(submission, {

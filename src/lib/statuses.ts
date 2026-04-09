@@ -54,15 +54,9 @@ export function canBecomeReady(params: {
     return false;
   }
 
-  if (params.templateType === "sunday_fundamentals") {
-    return true;
-  }
-
-  if (params.templateType === "custom") {
-    return false;
-  }
-
-  return Boolean(params.youtubeUrl?.trim());
+  return requiresYoutubeUrl(params.templateType)
+    ? Boolean(params.youtubeUrl?.trim())
+    : true;
 }
 
 export function calculateSubmissionStatus(params: {
@@ -73,33 +67,14 @@ export function calculateSubmissionStatus(params: {
   customTitle?: string | null;
   hasUpload?: boolean;
   youtubeUrl?: string | null;
-  manualStatus?: SubmissionStatus | null;
 }): SubmissionStatus {
-  if (params.manualStatus) {
-    if (params.manualStatus === "ready_for_draft") {
-      if (params.templateType === "custom") {
-        return "ready_for_draft";
-      }
-
-      if (canBecomeReady(params)) {
-        return "ready_for_draft";
-      }
-
-      return requiresYoutubeUrl(params.templateType)
-        ? "awaiting_youtube"
-        : "ready_for_draft";
-    }
-
-    return params.manualStatus;
-  }
-
-  if (params.templateType === "custom") {
+  if (!hasRequiredSubmissionFields(params)) {
     return "submitted";
   }
 
-  if (params.templateType === "sunday_fundamentals") {
-    return "ready_for_draft";
+  if (requiresYoutubeUrl(params.templateType) && !params.youtubeUrl?.trim()) {
+    return "awaiting_youtube";
   }
 
-  return canBecomeReady(params) ? "ready_for_draft" : "awaiting_youtube";
+  return canBecomeReady(params) ? "ready_to_publish" : "submitted";
 }

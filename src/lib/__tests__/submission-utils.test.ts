@@ -7,6 +7,12 @@ import {
   requiresPrimaryUpload,
 } from "../files";
 import { normalizePersonUrl } from "../links";
+import {
+  buildSubmissionPublicPath,
+  buildSubmissionPublicUrl,
+  buildSubmissionSlug,
+  buildWordPressLinkLabel,
+} from "../public-pages";
 import { buildLinkedPeople, renderLinkedPeopleHtml } from "../preview";
 import { calculateSubmissionStatus, hasRequiredSubmissionFields } from "../statuses";
 import { generateSubmissionTitle } from "../templates";
@@ -21,6 +27,14 @@ describe("submission utilities", () => {
         sessionDate,
       }),
     ).toBe("Virtual Morning Report - March 14, 2026");
+
+    expect(
+      generateSubmissionTitle({
+        templateType: "standard",
+        sessionDate,
+        chiefComplaint: "Chest Pain",
+      }),
+    ).toBe("Virtual Morning Report - March 14, 2026 - Chest Pain");
 
     expect(
       generateSubmissionTitle({
@@ -84,7 +98,7 @@ describe("submission utilities", () => {
         hasUpload: true,
         youtubeUrl: "https://youtube.com/watch?v=ready",
       }),
-    ).toBe("ready_for_draft");
+    ).toBe("ready_to_publish");
 
     expect(
       calculateSubmissionStatus({
@@ -92,7 +106,7 @@ describe("submission utilities", () => {
         sessionDate: "2026-03-14",
         hasUpload: true,
       }),
-    ).toBe("ready_for_draft");
+    ).toBe("ready_to_publish");
 
     expect(
       calculateSubmissionStatus({
@@ -100,7 +114,7 @@ describe("submission utilities", () => {
         sessionDate: "2026-03-14",
         customTitle: "Custom Title",
       }),
-    ).toBe("submitted");
+    ).toBe("ready_to_publish");
   });
 
   it("sanitizes filenames and validates upload types", () => {
@@ -128,7 +142,7 @@ describe("submission utilities", () => {
     expect(requiresPrimaryUpload("custom")).toBe(false);
   });
 
-  it("renders linked people for WordPress prep", () => {
+  it("renders linked people for public pages", () => {
     const linkedPeople = buildLinkedPeople([
       {
         fullName: "Dr. Maya Patel",
@@ -143,6 +157,21 @@ describe("submission utilities", () => {
 
     expect(renderLinkedPeopleHtml(linkedPeople)).toBe(
       '<a href="https://x.com/mayapatel">Dr. Maya Patel</a>, Dr. Chris Ncube',
+    );
+  });
+
+  it("builds public slugs and URLs", () => {
+    expect(buildSubmissionSlug("Virtual Morning Report - March 14, 2026")).toBe(
+      "virtual-morning-report-march-14-2026",
+    );
+    expect(buildSubmissionPublicPath("virtual-morning-report-march-14-2026")).toBe(
+      "/vmr/virtual-morning-report-march-14-2026",
+    );
+    expect(buildSubmissionPublicUrl("virtual-morning-report-march-14-2026")).toBe(
+      "http://localhost:3000/vmr/virtual-morning-report-march-14-2026",
+    );
+    expect(buildWordPressLinkLabel("Virtual Morning Report - March 14, 2026")).toBe(
+      "Read Virtual Morning Report - March 14, 2026",
     );
   });
 
