@@ -38,4 +38,12 @@ export const ALLOWED_UPLOAD_LABELS: Record<string, string> = {
   custom: "Optional PDF",
 };
 
+export const TEMPLATE_TYPE_LABELS: Record<string, string> = {
+  standard: "Standard",
+  raphael_medina_subspecialty: "Rafael Medina Subspecialty",
+  img_vmr: "IMG VMR",
+  sunday_fundamentals: "Sunday Fundamentals",
+  custom: "Custom VMR",
+};
+
 export const INTERNAL_DATE_LOCALE = "en-US";

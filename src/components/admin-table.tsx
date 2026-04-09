@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TEMPLATE_TYPE_LABELS } from "@/lib/constants";
 import { buildSubmissionPublicPath } from "@/lib/public-pages";
 import { cn } from "@/lib/ui";
 
@@ -194,7 +195,7 @@ export function AdminTable({
                 </TableCell>
                 <TableCell>
                   <Badge variant={templateBadgeVariant(row.templateType)}>
-                    {row.templateType.replaceAll("_", " ")}
+                    {TEMPLATE_TYPE_LABELS[row.templateType] ?? row.templateType}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-text-secondary whitespace-nowrap">

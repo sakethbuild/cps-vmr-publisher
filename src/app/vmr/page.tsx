@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDisplayDate } from "@/lib/dates";
 import { buildSubmissionPublicPath } from "@/lib/public-pages";
+import { TEMPLATE_TYPE_LABELS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
@@ -72,7 +73,7 @@ export default async function PublicVmrArchivePage() {
                   ) : (
                     <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradientClass}`}>
                       <span className="text-xs font-medium uppercase tracking-wider text-text-muted">
-                        {submission.templateType.replaceAll("_", " ")}
+                        {TEMPLATE_TYPE_LABELS[submission.templateType] ?? submission.templateType}
                       </span>
                     </div>
                   )}

@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ALLOWED_UPLOAD_LABELS,
   PERSON_LINK_TYPE_OPTIONS,
+  TEMPLATE_TYPE_LABELS,
   TEMPLATE_TYPE_OPTIONS,
 } from "@/lib/constants";
 import { formatDisplayDate } from "@/lib/dates";
@@ -309,7 +310,7 @@ export function SubmissionEditor({
                 onChange={(e) => setState({ ...state, templateType: e.target.value as TemplateType })}
               >
                 {TEMPLATE_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>{opt.replaceAll("_", " ")}</option>
+                  <option key={opt} value={opt}>{TEMPLATE_TYPE_LABELS[opt] ?? opt}</option>
                 ))}
               </Select>
             </label>
