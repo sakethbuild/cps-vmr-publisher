@@ -16,7 +16,7 @@
   "dependencies": {
     "@libsql/client": "^0.17.2",
     "@napi-rs/canvas": "^0.1.96",
-    "@prisma/adapter-libsql": "^7.7.0",
+    "@prisma/adapter-libsql": "^6.19.3",
     "@prisma/client": "^6.19.2",
     "@vercel/blob": "^2.3.3",
     "clsx": "^2.1.1",
