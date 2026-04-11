@@ -19,7 +19,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "system",
-  resolvedTheme: "light",
+  resolvedTheme: "dark",
   setTheme: () => {},
 });
 
@@ -27,11 +27,16 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
+/**
+ * Resolve "system" preference.
+ * Defaults to dark when no OS preference is detectable so that
+ * first-time visitors land on the dark SearchCPS-style palette.
+ */
 function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  if (typeof window === "undefined") return "dark";
+  return window.matchMedia("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
 }
 
 function applyTheme(resolved: "light" | "dark") {
@@ -45,7 +50,7 @@ function applyTheme(resolved: "light" | "dark") {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
@@ -86,13 +91,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Inline script to prevent FOUC — inject into <head> */
+/**
+ * Inline script to prevent FOUC — injected into <head>.
+ *
+ * Dark is the default (matching SearchCPS). Light mode only takes
+ * effect when the user has explicitly chosen "light" OR left the
+ * toggle on "system" AND their OS prefers light.
+ */
 export const themeInitScript = `
 (function(){
   try {
     var t = localStorage.getItem('theme');
-    var dark = t === 'dark' || (!t || t === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (dark) document.documentElement.classList.add('dark');
-  } catch(e) {}
+    var prefersLight = (!t || t === 'system') && window.matchMedia('(prefers-color-scheme: light)').matches;
+    var isLight = t === 'light' || prefersLight;
+    if (!isLight) document.documentElement.classList.add('dark');
+  } catch(e) {
+    document.documentElement.classList.add('dark');
+  }
 })();
 `;

@@ -76,12 +76,12 @@ export default async function PublicSubmissionPage({
     <div className="space-y-5">
       <Link
         href="/vmr"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-text-muted transition hover:text-text-primary"
+        className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
         </svg>
-        All VMRs
+        Back to archive
       </Link>
 
       <SubmissionPublicView

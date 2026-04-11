@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/ui";
 
@@ -78,12 +79,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col">
       {/* Branding */}
       <div className="px-4 py-5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-accent">
-          CPS Internal
-        </p>
-        <h1 className="mt-1 text-sm font-bold text-text-primary">
-          VMR Publisher
-        </h1>
+        <Link
+          href="/vmr"
+          onClick={onNavigate}
+          className="inline-flex transition-opacity hover:opacity-80"
+          aria-label="CPS VMR"
+        >
+          <Logo wordmark="VMR" size={32} />
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -101,7 +104,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border-default px-3 py-3 space-y-1">
+      <div className="space-y-1 border-t border-border-default px-3 py-3">
+        <a
+          href="https://www.searchcps.com"
+          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-text-muted transition-colors hover:bg-surface-tertiary hover:text-accent"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          SearchCPS
+        </a>
         <ThemeToggle className="w-full justify-start" />
         <button
           type="button"
@@ -152,10 +165,7 @@ export function MobileHeader() {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-accent">CPS Internal</p>
-          <p className="text-sm font-bold text-text-primary">VMR Publisher</p>
-        </div>
+        <Logo wordmark="VMR" size={28} />
       </header>
 
       {/* Overlay */}
