@@ -160,9 +160,9 @@ export function SubmissionPublicView({
             </div>
           )}
 
-          {/* Chief complaint */}
+          {/* Chief concern */}
           {chiefComplaint?.trim() && (
-            <DetailSection title="Chief Complaint">
+            <DetailSection title="Chief Concern">
               <p className="text-[15px] font-medium text-status-warning">
                 {chiefComplaint.trim()}
               </p>
@@ -197,7 +197,7 @@ export function SubmissionPublicView({
           )}
 
           {chiefComplaint?.trim() && (
-            <DetailSection title="Chief Complaint">
+            <DetailSection title="Chief Concern">
               <p className="text-[15px] font-medium text-status-warning">
                 {chiefComplaint.trim()}
               </p>
@@ -218,7 +218,7 @@ export function SubmissionPublicView({
           {youtubeUrl && <YouTubeEmbed url={youtubeUrl} title={title} />}
 
           {chiefComplaint?.trim() && (
-            <DetailSection title="Chief Complaint">
+            <DetailSection title="Chief Concern">
               <p className="text-[15px] font-medium text-status-warning">
                 {chiefComplaint.trim()}
               </p>

@@ -89,7 +89,7 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
         {submission.chiefComplaint?.trim() && (
           <div className="mt-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-              Chief Complaint
+              Chief Concern
             </p>
             <p className="mt-0.5 line-clamp-2 text-xs text-status-warning">
               {submission.chiefComplaint.trim()}
