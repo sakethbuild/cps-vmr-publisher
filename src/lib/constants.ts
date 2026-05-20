@@ -7,6 +7,7 @@ export const TEMPLATE_TYPE_OPTIONS = [
 ] as const;
 
 export const SUBMISSION_STATUS_OPTIONS = [
+  "awaiting_upload",
   "submitted",
   "awaiting_youtube",
   "ready_to_publish",
@@ -22,20 +23,52 @@ export const PERSON_LINK_TYPE_OPTIONS = [
   "custom",
 ] as const;
 
-export const PDF_ONLY_TEMPLATE_TYPES = [
-  "standard",
-  "raphael_medina_subspecialty",
-  "img_vmr",
-] as const;
+export const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
+export type AllowedImageExtension = (typeof ALLOWED_IMAGE_EXTENSIONS)[number];
 
-export const SUNDAY_UPLOAD_EXTENSIONS = ["png", "jpg", "jpeg", "pdf"] as const;
+export const IMAGE_MIME_TYPES: Record<AllowedImageExtension, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+};
 
-export const ALLOWED_UPLOAD_LABELS: Record<string, string> = {
-  standard: "PDF",
-  raphael_medina_subspecialty: "PDF",
-  img_vmr: "PDF",
-  sunday_fundamentals: "PNG, JPG, or PDF (PDF will be auto-converted to image)",
-  custom: "Optional PDF",
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+export type TemplateUploadRule = {
+  allowedExtensions: readonly AllowedImageExtension[];
+  label: string;
+  required: boolean;
+};
+
+export const TEMPLATE_UPLOAD_RULES: Record<
+  (typeof TEMPLATE_TYPE_OPTIONS)[number],
+  TemplateUploadRule
+> = {
+  standard: {
+    allowedExtensions: ALLOWED_IMAGE_EXTENSIONS,
+    label: "PNG or JPG",
+    required: true,
+  },
+  raphael_medina_subspecialty: {
+    allowedExtensions: ALLOWED_IMAGE_EXTENSIONS,
+    label: "PNG or JPG",
+    required: true,
+  },
+  img_vmr: {
+    allowedExtensions: ALLOWED_IMAGE_EXTENSIONS,
+    label: "PNG or JPG",
+    required: true,
+  },
+  sunday_fundamentals: {
+    allowedExtensions: ALLOWED_IMAGE_EXTENSIONS,
+    label: "PNG or JPG",
+    required: true,
+  },
+  custom: {
+    allowedExtensions: ALLOWED_IMAGE_EXTENSIONS,
+    label: "Optional PNG or JPG",
+    required: false,
+  },
 };
 
 export const TEMPLATE_TYPE_LABELS: Record<string, string> = {

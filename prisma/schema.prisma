@@ -16,6 +16,7 @@ enum TemplateType {
 }
 
 enum SubmissionStatus {
+  awaiting_upload
   submitted
   awaiting_youtube
   ready_to_publish
@@ -32,6 +33,20 @@ enum PersonLinkType {
   x
   instagram
   custom
+}
+
+enum UserRole {
+  member
+  super_admin
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  hashedPassword String
+  role           UserRole @default(member)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Submission {
@@ -53,8 +68,7 @@ model Submission {
   fileMimeType         String?
   fileExtension        String?
   storagePath          String?
-  previewImagePath     String?
-  previewImageMimeType String?
+  uploadConfirmedAt    DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   people               SubmissionPerson[]

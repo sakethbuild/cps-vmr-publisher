@@ -3,8 +3,10 @@ import path from "node:path";
 import type { TemplateType } from "@prisma/client";
 
 import {
-  PDF_ONLY_TEMPLATE_TYPES,
-  SUNDAY_UPLOAD_EXTENSIONS,
+  ALLOWED_IMAGE_EXTENSIONS,
+  IMAGE_MIME_TYPES,
+  TEMPLATE_UPLOAD_RULES,
+  type AllowedImageExtension,
 } from "@/lib/constants";
 import { formatDisplayDate } from "@/lib/dates";
 import { getTemplateBaseSlug } from "@/lib/templates";
@@ -24,25 +26,22 @@ export function getFileDetails(filename: string, mimeType?: string | null): File
 }
 
 export function isAllowedUpload(templateType: TemplateType, extension: string): boolean {
-  if (templateType === "sunday_fundamentals") {
-    return SUNDAY_UPLOAD_EXTENSIONS.includes(
-      extension as (typeof SUNDAY_UPLOAD_EXTENSIONS)[number],
-    );
-  }
-
-  if (templateType === "custom") {
-    return extension === "pdf";
-  }
-
-  return PDF_ONLY_TEMPLATE_TYPES.includes(
-    templateType as (typeof PDF_ONLY_TEMPLATE_TYPES)[number],
-  )
-    ? extension === "pdf"
-    : false;
+  const rule = TEMPLATE_UPLOAD_RULES[templateType];
+  if (!rule) return false;
+  return rule.allowedExtensions.includes(extension as AllowedImageExtension);
 }
 
 export function requiresPrimaryUpload(templateType: TemplateType): boolean {
-  return templateType !== "custom";
+  return TEMPLATE_UPLOAD_RULES[templateType]?.required ?? false;
+}
+
+export function mimeTypeForExtension(extension: string): string | null {
+  const ext = extension.toLowerCase() as AllowedImageExtension;
+  return IMAGE_MIME_TYPES[ext] ?? null;
+}
+
+export function isAllowedImageExtension(extension: string): extension is AllowedImageExtension {
+  return ALLOWED_IMAGE_EXTENSIONS.includes(extension as AllowedImageExtension);
 }
 
 export function sanitizeSlugPart(value: string): string {

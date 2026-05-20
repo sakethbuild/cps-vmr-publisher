@@ -7,10 +7,10 @@ import {
   buildSubmissionPayload,
   createPeopleData,
   parseSubmissionFormData,
-  storePrimaryUpload,
   validateUploadRequirement,
 } from "@/lib/submission";
 import { prisma } from "@/lib/prisma";
+import { createPresignedUploadForSubmission } from "@/lib/upload-orchestration";
 
 export const runtime = "nodejs";
 
@@ -20,10 +20,10 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const input = parseSubmissionFormData(formData);
-    const uploadedFile = formData.get("primaryUpload");
 
-    const submissionId = randomUUID();
-    const hasIncomingUpload = uploadedFile instanceof File && uploadedFile.size > 0;
+    const uploadFileName = (formData.get("uploadFileName") as string | null)?.trim() || null;
+    const uploadMimeType = (formData.get("uploadMimeType") as string | null)?.trim() || null;
+    const hasIncomingUpload = Boolean(uploadFileName);
 
     validateUploadRequirement({
       templateType: input.templateType,
@@ -31,18 +31,24 @@ export async function POST(request: Request) {
       hasExistingUpload: false,
     });
 
-    const upload = hasIncomingUpload
-      ? await storePrimaryUpload({
-          submissionId,
-          templateType: input.templateType,
-          sessionDate: input.sessionDate,
-          file: uploadedFile,
-        })
-      : null;
+    const submissionId = randomUUID();
+
+    let presignedUpload: Awaited<
+      ReturnType<typeof createPresignedUploadForSubmission>
+    > | null = null;
+    if (hasIncomingUpload && uploadFileName) {
+      presignedUpload = await createPresignedUploadForSubmission({
+        submissionId,
+        templateType: input.templateType,
+        sessionDate: input.sessionDate,
+        originalFileName: uploadFileName,
+        declaredMimeType: uploadMimeType,
+      });
+    }
 
     const payload = buildSubmissionPayload({
       input,
-      upload,
+      upload: null,
     });
 
     const people = createPeopleData(input.presenters, input.discussants);
@@ -51,16 +57,28 @@ export async function POST(request: Request) {
       data: {
         id: submissionId,
         ...payload.data,
-        people: {
-          create: people,
-        },
+        people: { create: people },
       },
     });
 
     return NextResponse.json({
       id: submission.id,
       status: submission.status,
-      message: "Submission saved and added to the admin dashboard.",
+      presignedUpload: presignedUpload
+        ? {
+            uploadUrl: presignedUpload.uploadUrl,
+            publicUrl: presignedUpload.publicUrl,
+            storageKey: presignedUpload.storageKey,
+            sanitizedFileName: presignedUpload.sanitizedFileName,
+            fileExtension: presignedUpload.fileExtension,
+            fileMimeType: presignedUpload.fileMimeType,
+            expiresInSeconds: presignedUpload.expiresInSeconds,
+            originalFileName: uploadFileName,
+          }
+        : null,
+      message: presignedUpload
+        ? "Submission created. Uploading file..."
+        : "Submission saved and added to the admin dashboard.",
     });
   } catch (error) {
     return NextResponse.json(

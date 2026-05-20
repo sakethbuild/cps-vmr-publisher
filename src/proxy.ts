@@ -6,25 +6,21 @@ const PUBLIC_PATHS = ["/vmr", "/login", "/api/auth", "/uploads", "/_next", "/fav
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p)) || pathname === "/") {
     return NextResponse.next();
   }
 
-  // Skip auth if no password is configured (local dev convenience)
-  if (!process.env.AUTH_PASSWORD) {
-    return NextResponse.next();
-  }
-
-  // Check for auth cookie
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Validate token (HMAC check)
-  const [ts, sig] = token.split(".");
-  if (!ts || !sig) {
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  const [userId, ts, sig] = parts;
+  if (!userId || !ts || !sig) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -33,7 +29,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Verify HMAC
   const secret = process.env.AUTH_SECRET ?? "dev-secret-change-me";
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -43,7 +38,11 @@ export async function proxy(request: NextRequest) {
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(ts));
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(`${userId}:${ts}`),
+  );
   const expectedSig = Array.from(new Uint8Array(signature))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

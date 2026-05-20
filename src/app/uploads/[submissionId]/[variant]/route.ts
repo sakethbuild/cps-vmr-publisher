@@ -13,42 +13,27 @@ type UploadRouteProps = {
 };
 
 export async function GET(_: Request, { params }: UploadRouteProps) {
-  const { submissionId, variant } = await params;
+  const { submissionId } = await params;
 
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
   });
 
-  if (!submission) {
-    return NextResponse.json({ error: "Submission not found." }, { status: 404 });
-  }
-
-  const relativePath =
-    variant === "preview" ? submission.previewImagePath : submission.storagePath;
-  const mimeType =
-    variant === "preview"
-      ? submission.previewImageMimeType
-      : submission.fileMimeType;
-  const filename =
-    variant === "preview"
-      ? (submission.sanitizedFileName ?? "preview.png").replace(/\.[^.]+$/, ".png")
-      : submission.sanitizedFileName ?? "download";
-
-  if (!relativePath) {
+  if (!submission || !submission.storagePath) {
     return NextResponse.json({ error: "File not available." }, { status: 404 });
   }
 
-  // If the path is a full URL (Vercel Blob), redirect directly
-  if (relativePath.startsWith("https://")) {
-    return NextResponse.redirect(relativePath);
+  if (submission.storagePath.startsWith("http://") || submission.storagePath.startsWith("https://")) {
+    return NextResponse.redirect(submission.storagePath);
   }
 
   const storage = getStorageService();
-  const fileBuffer = await storage.readFile(relativePath);
+  const fileBuffer = await storage.readFile(submission.storagePath);
+  const filename = submission.sanitizedFileName ?? "download.png";
 
   return new NextResponse(new Uint8Array(fileBuffer), {
     headers: {
-      "Content-Type": mimeType ?? "application/octet-stream",
+      "Content-Type": submission.fileMimeType ?? "application/octet-stream",
       "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "no-store",
     },

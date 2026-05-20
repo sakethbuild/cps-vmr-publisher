@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,14 +22,14 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       if (res.ok) {
         window.location.href = "/admin";
       } else {
         const data = await res.json();
-        setError(data.error ?? "Invalid password");
+        setError(data.error ?? "Invalid email or password");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -39,7 +40,6 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-primary">
-      {/* Minimal top strip — no nav, just branding + return home link */}
       <header className="border-b border-border-default bg-surface-secondary">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:px-6">
           <a
@@ -59,27 +59,38 @@ export default function LoginPage() {
               CPS VMR Publisher
             </h1>
             <p className="mt-1 text-sm text-text-muted">
-              Enter the password to continue.
+              Sign in with your email and password.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              required
+              autoFocus
+              autoComplete="email"
+            />
             <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               required
-              autoFocus
+              autoComplete="current-password"
             />
 
-            {error && (
-              <p className="text-sm text-status-danger">{error}</p>
-            )}
+            {error && <p className="text-sm text-status-danger">{error}</p>}
 
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "Signing in..." : "Sign in"}
             </Button>
+
+            <p className="text-center text-xs text-text-muted">
+              Forgot your password? Ask the super admin to reset it.
+            </p>
           </form>
         </Card>
       </div>
