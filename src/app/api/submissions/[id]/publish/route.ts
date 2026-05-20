@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireInternalAccess } from "@/lib/auth";
+import { requireSuperAdmin } from "@/lib/auth";
 import {
   buildSubmissionPublicUrl,
   resolveUniqueSubmissionSlug,
@@ -17,7 +17,12 @@ type PublishRouteProps = {
 };
 
 export async function POST(_: Request, { params }: PublishRouteProps) {
-  await requireInternalAccess();
+  if (!(await requireSuperAdmin())) {
+    return NextResponse.json(
+      { error: "Only a super admin can publish submissions." },
+      { status: 403 },
+    );
+  }
 
   const { id } = await params;
   const submission = await prisma.submission.findUnique({

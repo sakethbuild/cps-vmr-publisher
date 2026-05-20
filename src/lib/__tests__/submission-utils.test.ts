@@ -86,6 +86,15 @@ describe("submission utilities", () => {
       calculateSubmissionStatus({
         templateType: "standard",
         sessionDate: "2026-03-14",
+        hasUpload: false,
+        youtubeUrl: "",
+      }),
+    ).toBe("awaiting_upload");
+
+    expect(
+      calculateSubmissionStatus({
+        templateType: "standard",
+        sessionDate: "2026-03-14",
         hasUpload: true,
         youtubeUrl: "",
       }),
@@ -110,9 +119,18 @@ describe("submission utilities", () => {
 
     expect(
       calculateSubmissionStatus({
+        templateType: "sunday_fundamentals",
+        sessionDate: "2026-03-14",
+        hasUpload: false,
+      }),
+    ).toBe("awaiting_upload");
+
+    expect(
+      calculateSubmissionStatus({
         templateType: "custom",
         sessionDate: "2026-03-14",
         customTitle: "Custom Title",
+        hasUpload: false,
       }),
     ).toBe("ready_to_publish");
   });
@@ -122,24 +140,52 @@ describe("submission utilities", () => {
       buildSanitizedFilename({
         templateType: "standard",
         sessionDate: "2026-03-14",
-        extension: "pdf",
+        extension: "png",
       }),
-    ).toBe("virtual-morning-report-march-14-2026.pdf");
+    ).toBe("virtual-morning-report-march-14-2026.png");
 
     expect(
       buildSanitizedFilename({
         templateType: "sunday_fundamentals",
         sessionDate: "2026-03-14",
-        extension: "png",
+        extension: "jpg",
       }),
-    ).toBe("sunday-fundamentals-vmr-march-14-2026.png");
+    ).toBe("sunday-fundamentals-vmr-march-14-2026.jpg");
+  });
 
-    expect(isAllowedUpload("standard", "pdf")).toBe(true);
-    expect(isAllowedUpload("standard", "png")).toBe(false);
-    expect(isAllowedUpload("sunday_fundamentals", "png")).toBe(true);
-    expect(isAllowedUpload("sunday_fundamentals", "pdf")).toBe(true);
-    expect(requiresPrimaryUpload("standard")).toBe(true);
+  it("regression: PDF uploads are rejected across every template type", () => {
+    expect(isAllowedUpload("standard", "pdf")).toBe(false);
+    expect(isAllowedUpload("raphael_medina_subspecialty", "pdf")).toBe(false);
+    expect(isAllowedUpload("img_vmr", "pdf")).toBe(false);
+    expect(isAllowedUpload("sunday_fundamentals", "pdf")).toBe(false);
+    expect(isAllowedUpload("custom", "pdf")).toBe(false);
+  });
+
+  it("accepts PNG and JPG across every template type", () => {
+    for (const template of [
+      "standard",
+      "raphael_medina_subspecialty",
+      "img_vmr",
+      "sunday_fundamentals",
+      "custom",
+    ] as const) {
+      expect(isAllowedUpload(template, "png")).toBe(true);
+      expect(isAllowedUpload(template, "jpg")).toBe(true);
+      expect(isAllowedUpload(template, "jpeg")).toBe(true);
+    }
+  });
+
+  it("regression: custom template still does not require an upload", () => {
     expect(requiresPrimaryUpload("custom")).toBe(false);
+    expect(requiresPrimaryUpload("standard")).toBe(true);
+    expect(requiresPrimaryUpload("sunday_fundamentals")).toBe(true);
+  });
+
+  it("rejects non-image extensions", () => {
+    expect(isAllowedUpload("standard", "exe")).toBe(false);
+    expect(isAllowedUpload("standard", "gif")).toBe(false);
+    expect(isAllowedUpload("standard", "")).toBe(false);
+    expect(isAllowedUpload("standard", "webp")).toBe(false);
   });
 
   it("renders linked people for public pages", () => {

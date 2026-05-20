@@ -16,17 +16,20 @@ import { parseSessionDateInput } from "@/lib/dates";
 import {
   buildSanitizedFilename,
   getFileDetails,
+  isAllowedImageExtension,
   isAllowedUpload,
+  mimeTypeForExtension,
   requiresPrimaryUpload,
 } from "@/lib/files";
 import { normalizePersonUrl } from "@/lib/links";
-import { convertFirstPdfPageToPng } from "@/lib/pdf";
 import {
   calculateSubmissionStatus,
   hasRequiredSubmissionFields,
 } from "@/lib/statuses";
-import { getStorageService } from "@/lib/storage";
-import { emptyPerson, type SubmissionFormState } from "@/lib/submission-form";
+import {
+  emptyPerson,
+  type SubmissionFormState,
+} from "@/lib/submission-form";
 import {
   submissionSchema,
   type PersonInput,
@@ -77,67 +80,42 @@ export function parseSubmissionFormData(
   return result.data;
 }
 
-export async function storePrimaryUpload(params: {
-  submissionId: string;
+export type UploadDescriptor = {
+  originalFileName: string;
+  sanitizedFileName: string;
+  fileMimeType: string;
+  fileExtension: string;
+  storagePath: string;
+};
+
+export function buildUploadDescriptor(params: {
   templateType: TemplateType;
   sessionDate: string;
-  file: File;
-}) {
-  const fileDetails = getFileDetails(params.file.name, params.file.type);
+  originalFileName: string;
+  declaredMimeType: string | null;
+}): { sanitized: string; extension: string; mimeType: string } {
+  const fileDetails = getFileDetails(params.originalFileName, params.declaredMimeType);
 
-  if (!fileDetails.extension || !isAllowedUpload(params.templateType, fileDetails.extension)) {
+  if (!fileDetails.extension || !isAllowedImageExtension(fileDetails.extension)) {
+    throw new Error("Only PNG or JPG images are allowed for VMR uploads.");
+  }
+
+  if (!isAllowedUpload(params.templateType, fileDetails.extension)) {
     throw new Error("This file type is not allowed for the selected template.");
   }
 
-  const sanitizedFileName = buildSanitizedFilename({
+  const sanitized = buildSanitizedFilename({
     templateType: params.templateType,
     sessionDate: params.sessionDate,
     extension: fileDetails.extension,
   });
 
-  const storageService = getStorageService();
-  const fileBuffer = Buffer.from(await params.file.arrayBuffer());
-  const folder = `submissions/${params.submissionId}`;
-  const storedFile = await storageService.saveFile({
-    buffer: fileBuffer,
-    fileName: sanitizedFileName,
-    folder,
-  });
+  const mimeType =
+    mimeTypeForExtension(fileDetails.extension) ??
+    fileDetails.mimeType ??
+    "application/octet-stream";
 
-  let previewImagePath: string | null = null;
-  let previewImageMimeType: string | null = null;
-
-  if (params.templateType === "sunday_fundamentals" && fileDetails.extension === "pdf") {
-    const previewBuffer = await convertFirstPdfPageToPng(fileBuffer);
-    const previewFileName = sanitizedFileName.replace(/\.pdf$/i, ".png");
-    const previewImage = await storageService.saveFile({
-      buffer: previewBuffer,
-      fileName: previewFileName,
-      folder,
-    });
-    previewImagePath = previewImage.relativePath;
-    previewImageMimeType = "image/png";
-  } else if (
-    params.templateType === "sunday_fundamentals" &&
-    ["png", "jpg", "jpeg"].includes(fileDetails.extension)
-  ) {
-    previewImagePath = storedFile.relativePath;
-    previewImageMimeType = fileDetails.mimeType || `image/${fileDetails.extension}`;
-  }
-
-  return {
-    originalFileName: params.file.name,
-    sanitizedFileName,
-    fileMimeType:
-      fileDetails.mimeType ||
-      (fileDetails.extension === "pdf"
-        ? "application/pdf"
-        : `image/${fileDetails.extension}`),
-    fileExtension: fileDetails.extension,
-    storagePath: storedFile.relativePath,
-    previewImagePath,
-    previewImageMimeType,
-  };
+  return { sanitized, extension: fileDetails.extension, mimeType };
 }
 
 export function validateUploadRequirement(params: {
@@ -180,17 +158,7 @@ export function createPeopleData(
 
 export function buildSubmissionPayload(params: {
   input: SubmissionFormInput;
-  upload:
-    | {
-        originalFileName: string;
-        sanitizedFileName: string;
-        fileMimeType: string;
-        fileExtension: string;
-        storagePath: string;
-        previewImagePath: string | null;
-        previewImageMimeType: string | null;
-      }
-    | null;
+  upload: UploadDescriptor | null;
   existingSubmission?: Submission | null;
 }): {
   title: string;
@@ -207,13 +175,16 @@ export function buildSubmissionPayload(params: {
     chiefComplaint: params.input.chiefComplaint,
   });
 
+  const storagePath =
+    params.upload?.storagePath ?? params.existingSubmission?.storagePath ?? null;
+
   const status = calculateSubmissionStatus({
     templateType: params.input.templateType,
     sessionDate: params.input.sessionDate,
     subspecialty: params.input.subspecialty,
     residencyProgram: params.input.residencyProgram,
     customTitle: params.input.customTitle,
-    hasUpload: Boolean(params.upload?.storagePath ?? params.existingSubmission?.storagePath),
+    hasUpload: Boolean(storagePath),
     youtubeUrl: params.input.youtubeUrl,
   });
 
@@ -225,21 +196,6 @@ export function buildSubmissionPayload(params: {
     params.upload?.fileMimeType ?? params.existingSubmission?.fileMimeType;
   const fileExtension =
     params.upload?.fileExtension ?? params.existingSubmission?.fileExtension;
-  const storagePath =
-    params.upload?.storagePath ?? params.existingSubmission?.storagePath;
-
-  const previewImagePath =
-    params.input.templateType === "sunday_fundamentals"
-      ? params.upload?.previewImagePath ??
-        params.existingSubmission?.previewImagePath ??
-        null
-      : null;
-  const previewImageMimeType =
-    params.input.templateType === "sunday_fundamentals"
-      ? params.upload?.previewImageMimeType ??
-        params.existingSubmission?.previewImageMimeType ??
-        null
-      : null;
 
   return {
     title,
@@ -259,9 +215,7 @@ export function buildSubmissionPayload(params: {
       sanitizedFileName: sanitizedFileName ?? null,
       fileMimeType: fileMimeType ?? null,
       fileExtension: fileExtension ?? null,
-      storagePath: storagePath ?? null,
-      previewImagePath,
-      previewImageMimeType,
+      storagePath,
     },
   };
 }

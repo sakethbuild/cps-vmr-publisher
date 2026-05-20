@@ -12,24 +12,34 @@ import { SubmissionPublicView } from "@/components/submission-public-view";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ALLOWED_UPLOAD_LABELS,
+  ALLOWED_IMAGE_EXTENSIONS,
+  MAX_UPLOAD_BYTES,
   PERSON_LINK_TYPE_OPTIONS,
   TEMPLATE_TYPE_LABELS,
   TEMPLATE_TYPE_OPTIONS,
+  TEMPLATE_UPLOAD_RULES,
 } from "@/lib/constants";
 import { formatDisplayDate } from "@/lib/dates";
-import { buildWordPressLinkLabel } from "@/lib/public-pages";
-import { buildLinkedPeople, renderLinkedPeopleText } from "@/lib/preview";
+import { buildLinkedPeople } from "@/lib/preview";
 import { emptyPerson, type SubmissionFormState } from "@/lib/submission-form";
 import type { PersonInput } from "@/lib/submission-types";
 import { generateSubmissionTitle } from "@/lib/templates";
 import { cn } from "@/lib/ui";
 
+const ACCEPT_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS.map((ext) => `.${ext}`).join(",");
+
 function toTitleCase(value: string): string {
   return value.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 const PERSON_LINK_TYPE_LABELS: Record<(typeof PERSON_LINK_TYPE_OPTIONS)[number], string> = {
@@ -38,11 +48,6 @@ const PERSON_LINK_TYPE_LABELS: Record<(typeof PERSON_LINK_TYPE_OPTIONS)[number],
   instagram: "Instagram",
   custom: "Custom URL",
 };
-
-function getAcceptValue(templateType: TemplateType) {
-  if (templateType === "sunday_fundamentals") return ".png,.jpg,.jpeg,.pdf";
-  return ".pdf";
-}
 
 function getTitlePreview(state: SubmissionFormState) {
   if (!state.sessionDate) return "Select a date to preview the generated title.";
@@ -84,6 +89,47 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
+type UploadPhase =
+  | { kind: "idle" }
+  | { kind: "preparing"; fileName: string; size: number }
+  | { kind: "uploading"; fileName: string; size: number; loaded: number }
+  | { kind: "confirming"; fileName: string; size: number }
+  | { kind: "error"; message: string };
+
+type PresignedUpload = {
+  uploadUrl: string;
+  publicUrl: string;
+  storageKey: string;
+  sanitizedFileName: string;
+  fileExtension: string;
+  fileMimeType: string;
+  originalFileName: string;
+  expiresInSeconds: number;
+};
+
+async function putWithProgress(params: {
+  url: string;
+  file: File;
+  contentType: string;
+  onProgress: (loaded: number) => void;
+}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", params.url);
+    xhr.setRequestHeader("Content-Type", params.contentType);
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) params.onProgress(event.loaded);
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload failed (HTTP ${xhr.status})`));
+    });
+    xhr.addEventListener("error", () => reject(new Error("Network error during upload.")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload aborted.")));
+    xhr.send(params.file);
+  });
+}
+
 export function SubmissionEditor({
   initialState,
   mode,
@@ -91,6 +137,7 @@ export function SubmissionEditor({
   previewImageUrl,
   publicUrl,
   submissionId,
+  userRole = "super_admin",
 }: {
   initialState: SubmissionFormState;
   mode: "create" | "edit";
@@ -98,11 +145,14 @@ export function SubmissionEditor({
   previewImageUrl?: string | null;
   publicUrl?: string | null;
   submissionId?: string;
+  userRole?: "member" | "super_admin" | null;
 }) {
+  const isSuperAdmin = userRole === "super_admin";
   const router = useRouter();
   const [state, setState] = useState(initialState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>({ kind: "idle" });
   const [youtubeDraftValue, setYoutubeDraftValue] = useState(initialState.youtubeUrl ?? "");
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
@@ -116,71 +166,276 @@ export function SubmissionEditor({
   const presentersPreview = buildLinkedPeople(state.presenters);
   const discussantsPreview = buildLinkedPeople(state.discussants);
   const titlePreview = getTitlePreview(state);
-  const requiresYoutube = ["standard", "raphael_medina_subspecialty", "img_vmr"].includes(
-    state.templateType,
-  );
-  const hasUpload = Boolean(selectedFile?.name || state.existingFileName);
-  const currentStatus = state.currentStatus ?? "submitted";
-  const isPublished = currentStatus === "published";
+  const uploadRule = TEMPLATE_UPLOAD_RULES[state.templateType];
   const sessionDateLabel = state.sessionDate
     ? formatDisplayDate(state.sessionDate)
     : null;
+  const currentStatus = state.currentStatus ?? "submitted";
+  const isPublished = currentStatus === "published";
+  const isUploadBusy =
+    uploadPhase.kind === "preparing" ||
+    uploadPhase.kind === "uploading" ||
+    uploadPhase.kind === "confirming";
+
+  function validateLocalFile(file: File): string | null {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_IMAGE_EXTENSIONS.includes(ext as never)) {
+      return "This isn't a valid image. Export your slide as PNG or JPG from PowerPoint and try again.";
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return `That file is ${formatBytes(file.size)} — larger than the ${formatBytes(MAX_UPLOAD_BYTES)} limit. Re-export at a lower resolution or compress before uploading.`;
+    }
+    if (file.size === 0) {
+      return "That file is empty. Pick a non-empty PNG or JPG.";
+    }
+    return null;
+  }
+
+  async function uploadFileForSubmission(params: {
+    file: File;
+    submissionId: string;
+    presigned: PresignedUpload;
+  }) {
+    setUploadPhase({
+      kind: "uploading",
+      fileName: params.file.name,
+      size: params.file.size,
+      loaded: 0,
+    });
+
+    try {
+      await putWithProgress({
+        url: params.presigned.uploadUrl,
+        file: params.file,
+        contentType: params.presigned.fileMimeType,
+        onProgress: (loaded) => {
+          setUploadPhase({
+            kind: "uploading",
+            fileName: params.file.name,
+            size: params.file.size,
+            loaded,
+          });
+        },
+      });
+    } catch {
+      try {
+        await putWithProgress({
+          url: params.presigned.uploadUrl,
+          file: params.file,
+          contentType: params.presigned.fileMimeType,
+          onProgress: (loaded) => {
+            setUploadPhase({
+              kind: "uploading",
+              fileName: params.file.name,
+              size: params.file.size,
+              loaded,
+            });
+          },
+        });
+      } catch (retryError) {
+        throw new Error(
+          retryError instanceof Error
+            ? `Upload interrupted: ${retryError.message}. Check your connection and try again.`
+            : "Upload interrupted. Check your connection and try again.",
+        );
+      }
+    }
+
+    setUploadPhase({
+      kind: "confirming",
+      fileName: params.file.name,
+      size: params.file.size,
+    });
+
+    const confirmResponse = await fetch(
+      `/api/submissions/${params.submissionId}/confirm-upload`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          publicUrl: params.presigned.publicUrl,
+          storageKey: params.presigned.storageKey,
+          sanitizedFileName: params.presigned.sanitizedFileName,
+          fileExtension: params.presigned.fileExtension,
+          fileMimeType: params.presigned.fileMimeType,
+          originalFileName: params.presigned.originalFileName,
+        }),
+      },
+    );
+    const confirmResult = (await confirmResponse.json()) as {
+      ok?: boolean;
+      status?: SubmissionStatus;
+      error?: string;
+    };
+
+    if (!confirmResponse.ok || !confirmResult.ok) {
+      throw new Error(
+        confirmResult.error ??
+          "We couldn't verify that the upload is a valid image. Please try again.",
+      );
+    }
+
+    return confirmResult.status;
+  }
 
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFeedback(null);
 
+    if (selectedFile) {
+      const localError = validateLocalFile(selectedFile);
+      if (localError) {
+        setUploadPhase({ kind: "error", message: localError });
+        return;
+      }
+    }
+
     startTransition(() => {
       void (async () => {
-        const formData = new FormData();
-        formData.append("templateType", state.templateType);
-        formData.append("subspecialty", state.subspecialty ?? "");
-        formData.append("residencyProgram", state.residencyProgram ?? "");
-        formData.append("customTitle", state.customTitle ?? "");
-        formData.append("sessionDate", state.sessionDate ?? "");
-        formData.append("chiefComplaint", state.chiefComplaint ?? "");
-        formData.append("youtubeUrl", state.youtubeUrl ?? "");
-        formData.append("notes", state.notes ?? "");
-        formData.append("presenters", JSON.stringify(state.presenters));
-        formData.append("discussants", JSON.stringify(state.discussants));
+        try {
+          const formData = new FormData();
+          formData.append("templateType", state.templateType);
+          formData.append("subspecialty", state.subspecialty ?? "");
+          formData.append("residencyProgram", state.residencyProgram ?? "");
+          formData.append("customTitle", state.customTitle ?? "");
+          formData.append("sessionDate", state.sessionDate ?? "");
+          formData.append("chiefComplaint", state.chiefComplaint ?? "");
+          formData.append("youtubeUrl", state.youtubeUrl ?? "");
+          formData.append("notes", state.notes ?? "");
+          formData.append("presenters", JSON.stringify(state.presenters));
+          formData.append("discussants", JSON.stringify(state.discussants));
 
-        if (selectedFile) {
-          formData.append("primaryUpload", selectedFile);
+          if (mode === "create" && selectedFile) {
+            formData.append("uploadFileName", selectedFile.name);
+            formData.append("uploadMimeType", selectedFile.type ?? "");
+            setUploadPhase({
+              kind: "preparing",
+              fileName: selectedFile.name,
+              size: selectedFile.size,
+            });
+          }
+
+          const endpoint =
+            mode === "create" ? "/api/submissions" : `/api/submissions/${state.id}`;
+          const method = mode === "create" ? "POST" : "PATCH";
+          const response = await fetch(endpoint, { method, body: formData });
+          const result = (await response.json()) as {
+            id?: string;
+            status?: SubmissionStatus;
+            message?: string;
+            error?: string;
+            presignedUpload?: PresignedUpload | null;
+          };
+
+          if (!response.ok) {
+            setUploadPhase({ kind: "idle" });
+            setFeedback({
+              tone: "error",
+              message: result.error ?? "Something went wrong while saving.",
+            });
+            return;
+          }
+
+          let finalStatus = result.status ?? currentStatus;
+          if (mode === "create" && selectedFile && result.id && result.presignedUpload) {
+            try {
+              const confirmedStatus = await uploadFileForSubmission({
+                file: selectedFile,
+                submissionId: result.id,
+                presigned: result.presignedUpload,
+              });
+              if (confirmedStatus) finalStatus = confirmedStatus;
+              setUploadPhase({ kind: "idle" });
+            } catch (uploadError) {
+              setUploadPhase({
+                kind: "error",
+                message:
+                  uploadError instanceof Error
+                    ? uploadError.message
+                    : "Upload failed. Please try again.",
+              });
+              await fetch(`/api/submissions/${result.id}`, { method: "DELETE" }).catch(
+                () => {},
+              );
+              return;
+            }
+          }
+
+          setState((c) => ({ ...c, currentStatus: finalStatus }));
+          setFeedback({
+            tone: "success",
+            message:
+              result.message ?? (mode === "create" ? "Submission saved." : "Submission updated."),
+          });
+
+          if (mode === "create" && result.id) {
+            router.push(`/admin/submissions/${result.id}`);
+            return;
+          }
+
+          setSelectedFile(null);
+          setYoutubeDraftValue(state.youtubeUrl ?? "");
+          router.refresh();
+        } catch (error) {
+          setUploadPhase({ kind: "idle" });
+          setFeedback({
+            tone: "error",
+            message: error instanceof Error ? error.message : "Unexpected error.",
+          });
         }
-
-        const response = await fetch(
-          mode === "create" ? "/api/submissions" : `/api/submissions/${state.id}`,
-          { method: mode === "create" ? "POST" : "PATCH", body: formData },
-        );
-
-        const result = (await response.json()) as {
-          id?: string;
-          status?: SubmissionStatus;
-          message?: string;
-          error?: string;
-        };
-
-        if (!response.ok) {
-          setFeedback({ tone: "error", message: result.error ?? "Something went wrong while saving." });
-          return;
-        }
-
-        setState((c) => ({ ...c, currentStatus: result.status ?? c.currentStatus }));
-        setFeedback({
-          tone: "success",
-          message: result.message ?? (mode === "create" ? "Submission saved." : "Submission updated."),
-        });
-
-        if (mode === "create" && result.id) {
-          router.push(`/admin/submissions/${result.id}`);
-          return;
-        }
-
-        setSelectedFile(null);
-        setYoutubeDraftValue(state.youtubeUrl ?? "");
-        router.refresh();
       })();
     });
+  }
+
+  async function replaceImage(file: File) {
+    if (mode !== "edit" || !submissionId) return;
+    const localError = validateLocalFile(file);
+    if (localError) {
+      setUploadPhase({ kind: "error", message: localError });
+      return;
+    }
+
+    setFeedback(null);
+    setUploadPhase({
+      kind: "preparing",
+      fileName: file.name,
+      size: file.size,
+    });
+
+    try {
+      const presignResponse = await fetch(
+        `/api/submissions/${submissionId}/presign-upload`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            originalFileName: file.name,
+            declaredMimeType: file.type ?? null,
+          }),
+        },
+      );
+      const presigned = (await presignResponse.json()) as PresignedUpload & {
+        error?: string;
+      };
+      if (!presignResponse.ok || presigned.error) {
+        throw new Error(presigned.error ?? "Could not prepare upload.");
+      }
+
+      await uploadFileForSubmission({
+        file,
+        submissionId,
+        presigned,
+      });
+      setUploadPhase({ kind: "idle" });
+      setSelectedFile(null);
+      setFeedback({ tone: "success", message: "Image replaced." });
+      router.refresh();
+    } catch (error) {
+      setUploadPhase({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Replace failed.",
+      });
+    }
   }
 
   async function runAction(url: string, successMessage: string) {
@@ -224,7 +479,11 @@ export function SubmissionEditor({
           setFeedback({ tone: "error", message: result.error ?? "YouTube URL could not be updated." });
           return;
         }
-        setState((c) => ({ ...c, youtubeUrl: result.youtubeUrl ?? "", currentStatus: result.status ?? c.currentStatus }));
+        setState((c) => ({
+          ...c,
+          youtubeUrl: result.youtubeUrl ?? "",
+          currentStatus: result.status ?? c.currentStatus,
+        }));
         setYoutubeDraftValue(result.youtubeUrl ?? "");
         setFeedback({ tone: "success", message: result.message ?? "YouTube URL updated." });
         router.refresh();
@@ -266,20 +525,46 @@ export function SubmissionEditor({
     });
   }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) setSelectedFile(file);
-  }, []);
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      setDragActive(false);
+      const file = event.dataTransfer.files?.[0];
+      if (!file) return;
+      if (mode === "edit" && submissionId) {
+        void replaceImage(file);
+      } else {
+        setUploadPhase({ kind: "idle" });
+        setSelectedFile(file);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mode, submissionId],
+  );
+
+  function handleFilePicked(file: File | null) {
+    if (!file) return;
+    if (mode === "edit" && submissionId) {
+      void replaceImage(file);
+    } else {
+      setUploadPhase({ kind: "idle" });
+      setSelectedFile(file);
+    }
+  }
+
+  const uploadProgressPercent =
+    uploadPhase.kind === "uploading"
+      ? Math.round((uploadPhase.loaded / Math.max(1, uploadPhase.size)) * 100)
+      : uploadPhase.kind === "confirming"
+        ? 100
+        : 0;
 
   return (
     <div className={cn("grid gap-6", mode === "edit" && "xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.85fr)]")}>
       <form className="space-y-5" onSubmit={submitForm}>
-
-        {/* Feedback */}
         {feedback && (
           <div
+            role="status"
             className={cn(
               "rounded-lg border px-4 py-3 text-sm",
               feedback.tone === "success"
@@ -291,7 +576,6 @@ export function SubmissionEditor({
           </div>
         )}
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-text-primary">
             {mode === "create" ? "Submit a VMR" : "Edit submission"}
@@ -299,7 +583,6 @@ export function SubmissionEditor({
           {mode === "edit" && <StatusBadge status={currentStatus} />}
         </div>
 
-        {/* ── Session Info ── */}
         <Card>
           <SectionLabel>Session info</SectionLabel>
           <div className="grid gap-4 md:grid-cols-2">
@@ -363,7 +646,6 @@ export function SubmissionEditor({
           </div>
         </Card>
 
-        {/* ── Case Details ── */}
         <Card>
           <SectionLabel>Case details</SectionLabel>
           <div className="space-y-4">
@@ -398,7 +680,6 @@ export function SubmissionEditor({
           </div>
         </Card>
 
-        {/* ── People ── */}
         <Card>
           <PeopleSection
             title="Presenters"
@@ -416,65 +697,136 @@ export function SubmissionEditor({
           </div>
         </Card>
 
-        {/* ── Upload ── */}
         <Card>
-          <SectionLabel>File upload</SectionLabel>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-            onDragLeave={() => setDragActive(false)}
-            onDrop={handleDrop}
-            className={cn(
-              "relative rounded-lg border-2 border-dashed p-6 text-center transition-colors",
-              dragActive
-                ? "border-accent bg-accent-muted"
-                : "border-border-default hover:border-border-strong",
-            )}
-          >
-            <div className="space-y-2">
-              <svg className="mx-auto h-8 w-8 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <p className="text-sm text-text-secondary">
-                Drag and drop or{" "}
-                <label className="cursor-pointer font-medium text-accent hover:text-accent-hover">
-                  browse files
-                  <input
-                    type="file"
-                    accept={getAcceptValue(state.templateType)}
-                    required={mode === "create" && state.templateType !== "custom"}
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-                    className="sr-only"
-                  />
-                </label>
-              </p>
-              <p className="text-xs text-text-muted">
-                {ALLOWED_UPLOAD_LABELS[state.templateType]}
-              </p>
+          <SectionLabel>Image upload</SectionLabel>
+          {uploadPhase.kind === "uploading" || uploadPhase.kind === "preparing" || uploadPhase.kind === "confirming" ? (
+            <div className="rounded-lg border border-border-default bg-surface-tertiary p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="truncate text-sm font-medium text-text-primary">
+                  {uploadPhase.fileName}
+                </span>
+                <span className="text-xs text-text-muted">
+                  {uploadPhase.kind === "preparing" && "Preparing..."}
+                  {uploadPhase.kind === "uploading" &&
+                    `${formatBytes(uploadPhase.loaded)} of ${formatBytes(uploadPhase.size)}`}
+                  {uploadPhase.kind === "confirming" && "Verifying..."}
+                </span>
+              </div>
+              <div className="mt-3">
+                <ProgressBar
+                  value={uploadProgressPercent}
+                  label={`Uploading ${uploadPhase.fileName}`}
+                />
+              </div>
             </div>
-          </div>
-          {state.existingFileName && !selectedFile && (
-            <p className="mt-2 text-xs text-text-secondary">
-              Current file: <span className="font-medium">{state.existingFileName}</span>
-            </p>
-          )}
-          {selectedFile && (
-            <p className="mt-2 text-xs text-text-secondary">
-              Selected: <span className="font-medium">{selectedFile.name}</span>
-            </p>
+          ) : uploadPhase.kind === "error" ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-status-danger/30 bg-status-danger-muted p-4 text-sm text-status-danger"
+            >
+              <p className="font-medium">{uploadPhase.message}</p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setUploadPhase({ kind: "idle" });
+                  setSelectedFile(null);
+                }}
+                className="mt-3"
+              >
+                Re-select file
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+                className={cn(
+                  "relative rounded-lg border-2 border-dashed p-6 text-center transition-colors",
+                  dragActive
+                    ? "border-accent bg-accent-muted"
+                    : "border-border-default hover:border-border-strong",
+                )}
+              >
+                <div className="space-y-2">
+                  <svg className="mx-auto h-8 w-8 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <label className="block cursor-pointer">
+                    <span className="text-sm text-text-secondary">
+                      <span className="hidden md:inline">Drag and drop or </span>
+                      <span className="font-medium text-accent hover:text-accent-hover">
+                        <span className="hidden md:inline">browse files</span>
+                        <span className="md:hidden">Tap to select an image</span>
+                      </span>
+                    </span>
+                    <input
+                      type="file"
+                      accept={ACCEPT_EXTENSIONS}
+                      required={mode === "create" && uploadRule.required}
+                      onChange={(e) => handleFilePicked(e.target.files?.[0] ?? null)}
+                      className="sr-only"
+                      aria-describedby="upload-helper-text"
+                    />
+                  </label>
+                  <p className="text-xs text-text-muted">{uploadRule.label} · max {formatBytes(MAX_UPLOAD_BYTES)}</p>
+                </div>
+              </div>
+              <p id="upload-helper-text" className="mt-2 text-xs text-text-muted">
+                Your image uploads to secure storage when you click {mode === "create" ? "Submit VMR" : "Save changes"}. Keep filling out the form while it transfers.
+              </p>
+              {state.existingFileName && !selectedFile && (
+                <p className="mt-2 text-xs text-text-secondary">
+                  Current file: <span className="font-medium">{state.existingFileName}</span>
+                </p>
+              )}
+              {selectedFile && (
+                <p className="mt-2 text-xs text-text-secondary">
+                  Selected: <span className="font-medium">{selectedFile.name}</span> · {formatBytes(selectedFile.size)}
+                </p>
+              )}
+            </>
           )}
         </Card>
 
-        {/* ── Actions ── */}
+        {mode === "edit" && isPublished && !isSuperAdmin && (
+          <div
+            role="status"
+            className="rounded-lg border border-status-published/30 bg-status-published-muted px-4 py-3 text-sm text-status-published"
+          >
+            This VMR is live. Only a super admin can edit a published submission.
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={isPending} size="lg">
-            {isPending ? "Saving..." : mode === "create" ? "Submit VMR" : "Save changes"}
+          <Button
+            type="submit"
+            disabled={
+              isPending ||
+              isUploadBusy ||
+              (mode === "edit" && isPublished && !isSuperAdmin)
+            }
+            size="lg"
+          >
+            {isPending || isUploadBusy
+              ? uploadPhase.kind === "uploading"
+                ? "Uploading..."
+                : uploadPhase.kind === "confirming"
+                  ? "Verifying..."
+                  : "Saving..."
+              : mode === "create"
+                ? "Submit VMR"
+                : "Save changes"}
           </Button>
 
           {mode === "edit" && state.id && (
             <>
-              {!isPublished ? (
+              {isSuperAdmin && !isPublished && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -485,7 +837,8 @@ export function SubmissionEditor({
                 >
                   Publish
                 </Button>
-              ) : (
+              )}
+              {isSuperAdmin && isPublished && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -497,6 +850,16 @@ export function SubmissionEditor({
                   Unpublish
                 </Button>
               )}
+              {!isSuperAdmin && currentStatus === "ready_to_publish" && (
+                <span className="inline-flex items-center rounded-md bg-status-success-muted px-3 py-2 text-xs font-medium text-status-success">
+                  Awaiting super-admin review
+                </span>
+              )}
+              {!isSuperAdmin && isPublished && (
+                <span className="inline-flex items-center rounded-md bg-status-published-muted px-3 py-2 text-xs font-medium text-status-published">
+                  Published — only super admin can unpublish
+                </span>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -506,24 +869,49 @@ export function SubmissionEditor({
               >
                 Copy URL
               </Button>
-              <Button
-                type="button"
-                variant="danger"
-                size="lg"
-                disabled={isActionPending}
-                onClick={deleteSubmission}
-              >
-                Delete
-              </Button>
+              {isSuperAdmin && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="lg"
+                  disabled={isActionPending}
+                  onClick={deleteSubmission}
+                >
+                  Delete
+                </Button>
+              )}
             </>
           )}
         </div>
       </form>
 
-      {/* ── Sidebar (edit mode only) ── */}
       {mode === "edit" && (
         <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-          {/* YouTube URL quick-edit */}
+          {submissionId && (
+            <Card>
+              <SectionLabel>Replace image</SectionLabel>
+              <label className="block">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full pointer-events-none"
+                >
+                  Choose replacement
+                </Button>
+                <input
+                  type="file"
+                  accept={ACCEPT_EXTENSIONS}
+                  onChange={(e) => handleFilePicked(e.target.files?.[0] ?? null)}
+                  className="sr-only"
+                />
+              </label>
+              <p className="mt-2 text-xs text-text-muted">
+                Picking a new file replaces the current image immediately and deletes the old one.
+              </p>
+            </Card>
+          )}
+
           {submissionId && (
             <Card>
               <SectionLabel>YouTube URL</SectionLabel>
@@ -545,7 +933,6 @@ export function SubmissionEditor({
             </Card>
           )}
 
-          {/* Public URL */}
           {publicUrl && (
             <Card>
               <SectionLabel>Live URL</SectionLabel>
@@ -570,7 +957,6 @@ export function SubmissionEditor({
             </Card>
           )}
 
-          {/* Preview */}
           <Card>
             <SectionLabel>Preview</SectionLabel>
             <SubmissionPublicView

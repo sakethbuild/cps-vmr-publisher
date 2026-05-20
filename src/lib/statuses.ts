@@ -59,6 +59,10 @@ export function canBecomeReady(params: {
     : true;
 }
 
+function requiresUpload(templateType: TemplateType): boolean {
+  return templateType !== "custom";
+}
+
 export function calculateSubmissionStatus(params: {
   templateType: TemplateType;
   sessionDate?: string | Date | null;
@@ -68,6 +72,10 @@ export function calculateSubmissionStatus(params: {
   hasUpload?: boolean;
   youtubeUrl?: string | null;
 }): SubmissionStatus {
+  if (requiresUpload(params.templateType) && !params.hasUpload) {
+    return "awaiting_upload";
+  }
+
   if (!hasRequiredSubmissionFields(params)) {
     return "submitted";
   }

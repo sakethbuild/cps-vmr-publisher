@@ -30,9 +30,12 @@ export default async function PublicVmrArchivePage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-[10px] border border-dashed border-border-default bg-surface-secondary py-16 text-center">
-          <p className="text-sm text-text-muted">
-            No VMRs have been published yet.
+        <div className="rounded-[10px] border border-dashed border-border-default bg-surface-secondary px-6 py-16 text-center">
+          <p className="text-sm font-medium text-text-primary">
+            No published VMRs yet.
+          </p>
+          <p className="mt-2 text-sm text-text-muted">
+            New cases will appear here once the team publishes them.
           </p>
         </div>
       )}

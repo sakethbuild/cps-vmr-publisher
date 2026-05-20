@@ -45,12 +45,8 @@ export default async function PublicSubmissionPage({
 
   if (!submission) notFound();
 
-  const uploadUrl = submission.storagePath
-    ? `/uploads/${submission.id}/original`
-    : null;
-  const previewImageUrl = submission.previewImagePath
-    ? `/uploads/${submission.id}/preview`
-    : null;
+  const uploadUrl = submission.storagePath ?? null;
+  const previewImageUrl = uploadUrl;
   const presenters = buildLinkedPeople(
     submission.people
       .filter((p) => p.role === "presenter")

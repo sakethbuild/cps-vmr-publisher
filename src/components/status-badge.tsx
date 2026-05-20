@@ -6,6 +6,11 @@ const STATUS_CONFIG: Record<
   SubmissionStatus,
   { bg: string; text: string; dot: string }
 > = {
+  awaiting_upload: {
+    bg: "bg-status-warning-muted",
+    text: "text-status-warning",
+    dot: "bg-status-warning",
+  },
   submitted: {
     bg: "bg-surface-tertiary",
     text: "text-text-secondary",

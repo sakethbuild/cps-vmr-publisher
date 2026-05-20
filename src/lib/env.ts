@@ -8,13 +8,8 @@ export function getEnv() {
       /\/+$/,
       "",
     ),
-    // Auth
-    authPassword: process.env.AUTH_PASSWORD,
     authSecret: process.env.AUTH_SECRET,
-    // Turso (production database)
     tursoDatabaseUrl: process.env.TURSO_DATABASE_URL,
     tursoAuthToken: process.env.TURSO_AUTH_TOKEN,
-    // Vercel Blob (production storage)
-    blobReadWriteToken: process.env.BLOB_READ_WRITE_TOKEN,
   };
 }

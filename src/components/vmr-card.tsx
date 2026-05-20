@@ -14,7 +14,7 @@ type VmrCardSubmission = {
   templateType: string;
   chiefComplaint: string | null;
   youtubeUrl: string | null;
-  previewImagePath: string | null;
+  storagePath: string | null;
 };
 
 const TEMPLATE_GRADIENTS: Record<string, string> = {
@@ -25,18 +25,26 @@ const TEMPLATE_GRADIENTS: Record<string, string> = {
   custom: "from-surface-tertiary to-surface-secondary",
 };
 
-/**
- * Archive card for a published VMR. Visually mirrors SearchCPS's `.video-card`:
- * thumbnail with a type badge overlay, hover lift + accent border, clinical
- * title in orange. Click anywhere to open the public detail page.
- */
+function resolveThumbnail(submission: VmrCardSubmission): string | null {
+  if (submission.youtubeUrl) {
+    return getYouTubeThumbnailUrl(submission.youtubeUrl);
+  }
+  if (submission.storagePath) {
+    if (
+      submission.storagePath.startsWith("http://") ||
+      submission.storagePath.startsWith("https://")
+    ) {
+      return submission.storagePath;
+    }
+    return `/uploads/${submission.id}/original`;
+  }
+  return null;
+}
+
 export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
   if (!submission.slug) return null;
 
-  const thumbnail = submission.youtubeUrl
-    ? getYouTubeThumbnailUrl(submission.youtubeUrl)
-    : null;
-  const hasPreview = Boolean(submission.previewImagePath);
+  const thumbnail = resolveThumbnail(submission);
   const gradientClass =
     TEMPLATE_GRADIENTS[submission.templateType] ?? TEMPLATE_GRADIENTS.custom;
   const templateLabel =
@@ -47,20 +55,13 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
       href={buildSubmissionPublicPath(submission.slug)}
       className="group block overflow-hidden rounded-[10px] border border-border-default bg-surface-secondary transition-all duration-200 hover:-translate-y-0.5 hover:border-accent hover:shadow-lg hover:shadow-accent/5"
     >
-      {/* Thumbnail with type-badge overlay */}
       <div className="relative aspect-video overflow-hidden bg-surface-tertiary">
         {thumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={thumbnail}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          />
-        ) : hasPreview ? (
-          <Image
-            src={`/uploads/${submission.id}/preview`}
-            alt=""
             fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             unoptimized
           />
@@ -78,7 +79,6 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
         </span>
       </div>
 
-      {/* Body */}
       <div className="px-4 py-3.5">
         <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-text-primary transition-colors group-hover:text-accent">
           {submission.title}

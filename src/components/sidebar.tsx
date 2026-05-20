@@ -8,10 +8,11 @@ import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/ui";
 
-const navItems = [
+const baseNavItems = [
   {
     href: "/submit",
     label: "Submit VMR",
+    superAdminOnly: false,
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 5v14M5 12h14" />
@@ -21,6 +22,7 @@ const navItems = [
   {
     href: "/admin",
     label: "Dashboard",
+    superAdminOnly: false,
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -31,12 +33,37 @@ const navItems = [
     ),
   },
   {
+    href: "/admin/users",
+    label: "Users",
+    superAdminOnly: true,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
     href: "/vmr",
     label: "Public Archive",
+    superAdminOnly: false,
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
         <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/account",
+    label: "Account",
+    superAdminOnly: true,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
       </svg>
     ),
   },
@@ -72,12 +99,47 @@ function NavLink({
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+type SidebarRole = "member" | "super_admin" | null;
+
+function RoleChip({ role }: { role: SidebarRole }) {
+  if (!role) return null;
+  const isSuper = role === "super_admin";
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium",
+        isSuper
+          ? "bg-status-published-muted text-status-published"
+          : "bg-surface-tertiary text-text-secondary",
+      )}
+    >
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full",
+          isSuper ? "bg-status-published" : "bg-text-muted",
+        )}
+      />
+      {isSuper ? "Super admin" : "Member"}
+    </span>
+  );
+}
+
+function SidebarContent({
+  onNavigate,
+  role,
+  email,
+}: {
+  onNavigate?: () => void;
+  role: SidebarRole;
+  email?: string | null;
+}) {
   const pathname = usePathname();
+  const navItems = baseNavItems.filter(
+    (item) => !item.superAdminOnly || role === "super_admin",
+  );
 
   return (
     <div className="flex h-full flex-col">
-      {/* Branding */}
       <div className="px-4 py-5">
         <Link
           href="/vmr"
@@ -103,7 +165,22 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      {/* Footer */}
+      {role && (
+        <div className="border-t border-border-default px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            Signed in as
+          </p>
+          {email && (
+            <p className="mt-1 truncate text-xs font-medium text-text-primary" title={email}>
+              {email}
+            </p>
+          )}
+          <div className="mt-1.5">
+            <RoleChip role={role} />
+          </div>
+        </div>
+      )}
+
       <div className="space-y-1 border-t border-border-default px-3 py-3">
         <a
           href="https://www.searchcps.com"
@@ -137,17 +214,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** Desktop sidebar — always visible on md+ */
-export function Sidebar() {
+export function Sidebar({
+  role,
+  email,
+}: {
+  role: SidebarRole;
+  email?: string | null;
+}) {
   return (
     <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 border-r border-border-default bg-surface-secondary">
-      <SidebarContent />
+      <SidebarContent role={role} email={email} />
     </aside>
   );
 }
 
-/** Mobile sidebar — hamburger trigger + slide-over */
-export function MobileHeader() {
+export function MobileHeader({ role }: { role: SidebarRole }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -166,9 +247,11 @@ export function MobileHeader() {
           </svg>
         </button>
         <Logo wordmark="VMR" size={28} />
+        <span className="ml-auto">
+          <RoleChip role={role} />
+        </span>
       </header>
 
-      {/* Overlay */}
       {open && (
         <>
           <div
@@ -189,7 +272,7 @@ export function MobileHeader() {
                 </svg>
               </button>
             </div>
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <SidebarContent role={role} onNavigate={() => setOpen(false)} />
           </div>
         </>
       )}

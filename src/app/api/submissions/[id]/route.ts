@@ -1,27 +1,27 @@
 import { NextResponse } from "next/server";
 
-import { requireInternalAccess } from "@/lib/auth";
+import { requireInternalAccess, requireSuperAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { getStorageService } from "@/lib/storage";
 import {
   buildSubmissionPayload,
   createPeopleData,
   parseSubmissionFormData,
-  storePrimaryUpload,
   validateUploadRequirement,
 } from "@/lib/submission";
-import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 type SubmissionRouteProps = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
 export async function DELETE(_request: Request, { params }: SubmissionRouteProps) {
-  const authorized = await requireInternalAccess();
-  if (!authorized) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await requireSuperAdmin())) {
+    return NextResponse.json(
+      { error: "Only a super admin can delete submissions." },
+      { status: 403 },
+    );
   }
 
   try {
@@ -32,12 +32,16 @@ export async function DELETE(_request: Request, { params }: SubmissionRouteProps
       return NextResponse.json({ error: "Submission not found." }, { status: 404 });
     }
 
-    // Cascade delete handles SubmissionPerson records
+    if (submission.storagePath) {
+      const storage = getStorageService();
+      await storage.deleteFile(submission.storagePath).catch(() => {
+        // best-effort
+      });
+    }
+
     await prisma.submission.delete({ where: { id } });
 
-    return NextResponse.json({
-      message: "Submission deleted.",
-    });
+    return NextResponse.json({ message: "Submission deleted." });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not delete submission." },
@@ -47,41 +51,43 @@ export async function DELETE(_request: Request, { params }: SubmissionRouteProps
 }
 
 export async function PATCH(request: Request, { params }: SubmissionRouteProps) {
-  await requireInternalAccess();
+  if (!(await requireInternalAccess())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
-    const existingSubmission = await prisma.submission.findUnique({
-      where: { id },
-    });
+    const existingSubmission = await prisma.submission.findUnique({ where: { id } });
 
     if (!existingSubmission) {
       return NextResponse.json({ error: "Submission not found." }, { status: 404 });
     }
 
+    if (
+      existingSubmission.status === "published" &&
+      !(await requireSuperAdmin())
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This submission is published. Only a super admin can edit a live VMR.",
+        },
+        { status: 403 },
+      );
+    }
+
     const formData = await request.formData();
     const input = parseSubmissionFormData(formData);
-    const uploadedFile = formData.get("primaryUpload");
-    const hasIncomingUpload = uploadedFile instanceof File && uploadedFile.size > 0;
 
     validateUploadRequirement({
       templateType: input.templateType,
-      hasIncomingUpload,
+      hasIncomingUpload: false,
       hasExistingUpload: Boolean(existingSubmission.storagePath),
     });
 
-    const newUpload = hasIncomingUpload
-      ? await storePrimaryUpload({
-          submissionId: existingSubmission.id,
-          templateType: input.templateType,
-          sessionDate: input.sessionDate,
-          file: uploadedFile,
-        })
-      : null;
-
     const payload = buildSubmissionPayload({
       input,
-      upload: newUpload,
+      upload: null,
       existingSubmission,
     });
 

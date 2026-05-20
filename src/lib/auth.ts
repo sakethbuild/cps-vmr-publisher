@@ -1,11 +1,14 @@
 import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+
+import type { User, UserRole } from "@prisma/client";
+
+import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "vmr_auth";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
-function getAuthPassword(): string {
-  return process.env.AUTH_PASSWORD ?? "cps-vmr-local";
-}
+export type { UserRole };
 
 function getAuthSecret(): string {
   return process.env.AUTH_SECRET ?? "dev-secret-change-me";
@@ -26,26 +29,31 @@ async function hmacSign(data: string, secret: string): Promise<string> {
     .join("");
 }
 
-export async function createAuthToken(): Promise<string> {
+function payloadToSign(userId: string, ts: string): string {
+  return `${userId}:${ts}`;
+}
+
+export async function createAuthToken(userId: string): Promise<string> {
   const ts = Date.now().toString();
-  const sig = await hmacSign(ts, getAuthSecret());
-  return `${ts}.${sig}`;
+  const sig = await hmacSign(payloadToSign(userId, ts), getAuthSecret());
+  return `${userId}.${ts}.${sig}`;
 }
 
-export async function validateAuthToken(token: string): Promise<boolean> {
-  const [ts, sig] = token.split(".");
-  if (!ts || !sig) return false;
+type DecodedToken = { valid: true; userId: string } | { valid: false };
 
-  // Token older than 30 days
+export async function decodeAuthToken(token: string): Promise<DecodedToken> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return { valid: false };
+  const [userId, ts, sig] = parts;
+  if (!userId || !ts || !sig) return { valid: false };
+
   const age = Date.now() - Number(ts);
-  if (Number.isNaN(age) || age > COOKIE_MAX_AGE * 1000) return false;
+  if (Number.isNaN(age) || age > COOKIE_MAX_AGE * 1000) return { valid: false };
 
-  const expectedSig = await hmacSign(ts, getAuthSecret());
-  return sig === expectedSig;
-}
+  const expectedSig = await hmacSign(payloadToSign(userId, ts), getAuthSecret());
+  if (sig !== expectedSig) return { valid: false };
 
-export function verifyPassword(password: string): boolean {
-  return password === getAuthPassword();
+  return { valid: true, userId };
 }
 
 export function getAuthCookieConfig(token: string) {
@@ -72,15 +80,45 @@ export function getClearAuthCookieConfig() {
   };
 }
 
-/** Check auth cookie — use in API routes. Returns true if valid. */
-export async function requireInternalAccess(): Promise<boolean> {
-  // Skip auth in development if no password is configured
-  if (!process.env.AUTH_PASSWORD) return true;
-
+export async function getCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return false;
-  return validateAuthToken(token);
+  if (!token) return null;
+
+  const decoded = await decodeAuthToken(token);
+  if (!decoded.valid) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+  return user;
+}
+
+export async function getCurrentRole(): Promise<UserRole | null> {
+  const user = await getCurrentUser();
+  return user?.role ?? null;
+}
+
+export async function requireInternalAccess(): Promise<boolean> {
+  return (await getCurrentUser()) !== null;
+}
+
+export async function requireSuperAdmin(): Promise<boolean> {
+  return (await getCurrentRole()) === "super_admin";
+}
+
+export async function requireUserOrRedirect(): Promise<User> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  return user;
+}
+
+export async function requireSuperAdminOrNotFound(): Promise<User> {
+  const user = await requireUserOrRedirect();
+  if (user.role !== "super_admin") {
+    notFound();
+  }
+  return user;
 }
 
 export { COOKIE_NAME };
