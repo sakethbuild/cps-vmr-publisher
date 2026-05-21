@@ -49,3 +49,4 @@ next-env.d.ts
 *.log
 cps-vmr-dev*.log
 cps-vmr-dev*.out.log
+.gstack/
