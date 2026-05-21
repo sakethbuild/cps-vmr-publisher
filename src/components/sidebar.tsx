@@ -228,7 +228,13 @@ export function Sidebar({
   );
 }
 
-export function MobileHeader({ role }: { role: SidebarRole }) {
+export function MobileHeader({
+  role,
+  email,
+}: {
+  role: SidebarRole;
+  email?: string | null;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -272,7 +278,7 @@ export function MobileHeader({ role }: { role: SidebarRole }) {
                 </svg>
               </button>
             </div>
-            <SidebarContent role={role} onNavigate={() => setOpen(false)} />
+            <SidebarContent role={role} email={email} onNavigate={() => setOpen(false)} />
           </div>
         </>
       )}

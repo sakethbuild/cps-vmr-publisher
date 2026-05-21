@@ -12,7 +12,7 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen">
       <Sidebar role={role} email={email} />
-      <MobileHeader role={role} />
+      <MobileHeader role={role} email={email} />
       <main className="md:pl-60">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           {children}
