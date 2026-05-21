@@ -42,17 +42,23 @@ function normalizeOptional(value: string | null): string | undefined {
   return normalized ? normalized : undefined;
 }
 
+function isPersonRowBlank(person: PersonInput): boolean {
+  return !person.fullName?.trim() && !person.handleOrUrl?.trim();
+}
+
 function parsePeople(rawValue: FormDataEntryValue | null): PersonInput[] {
   if (typeof rawValue !== "string" || !rawValue.trim()) {
     return [];
   }
 
   const parsed = JSON.parse(rawValue) as PersonInput[];
-  return parsed.map((person) => ({
-    fullName: person.fullName ?? "",
-    linkType: person.linkType ?? "none",
-    handleOrUrl: person.handleOrUrl ?? "",
-  }));
+  return parsed
+    .map((person) => ({
+      fullName: person.fullName ?? "",
+      linkType: person.linkType ?? "none",
+      handleOrUrl: person.handleOrUrl ?? "",
+    }))
+    .filter((person) => !isPersonRowBlank(person));
 }
 
 export function parseSubmissionFormData(
