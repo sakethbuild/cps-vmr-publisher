@@ -16,7 +16,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ALLOWED_IMAGE_EXTENSIONS,
+  ALLOWED_UPLOAD_EXTENSIONS,
   MAX_UPLOAD_BYTES,
   PERSON_LINK_TYPE_OPTIONS,
   TEMPLATE_TYPE_LABELS,
@@ -30,7 +30,7 @@ import type { PersonInput } from "@/lib/submission-types";
 import { generateSubmissionTitle } from "@/lib/templates";
 import { cn } from "@/lib/ui";
 
-const ACCEPT_EXTENSIONS = ALLOWED_IMAGE_EXTENSIONS.map((ext) => `.${ext}`).join(",");
+const ACCEPT_EXTENSIONS = ALLOWED_UPLOAD_EXTENSIONS.map((ext) => `.${ext}`).join(",");
 
 function toTitleCase(value: string): string {
   return value.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -93,7 +93,7 @@ type UploadPhase =
   | { kind: "idle" }
   | { kind: "preparing"; fileName: string; size: number }
   | { kind: "uploading"; fileName: string; size: number; loaded: number }
-  | { kind: "confirming"; fileName: string; size: number }
+  | { kind: "confirming"; fileName: string; size: number; isPdf: boolean }
   | { kind: "error"; message: string };
 
 type PresignedUpload = {
@@ -179,14 +179,14 @@ export function SubmissionEditor({
 
   function validateLocalFile(file: File): string | null {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!ALLOWED_IMAGE_EXTENSIONS.includes(ext as never)) {
-      return "This isn't a valid image. Export your slide as PNG or JPG from PowerPoint and try again.";
+    if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext as never)) {
+      return "Pick a PNG, JPG, or PDF. Other formats aren't supported.";
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       return `That file is ${formatBytes(file.size)} — larger than the ${formatBytes(MAX_UPLOAD_BYTES)} limit. Re-export at a lower resolution or compress before uploading.`;
     }
     if (file.size === 0) {
-      return "That file is empty. Pick a non-empty PNG or JPG.";
+      return "That file is empty. Pick a non-empty PNG, JPG, or PDF.";
     }
     return null;
   }
@@ -241,10 +241,12 @@ export function SubmissionEditor({
       }
     }
 
+    const isPdf = params.file.name.toLowerCase().endsWith(".pdf");
     setUploadPhase({
       kind: "confirming",
       fileName: params.file.name,
       size: params.file.size,
+      isPdf,
     });
 
     const confirmResponse = await fetch(
@@ -709,7 +711,8 @@ export function SubmissionEditor({
                   {uploadPhase.kind === "preparing" && "Preparing..."}
                   {uploadPhase.kind === "uploading" &&
                     `${formatBytes(uploadPhase.loaded)} of ${formatBytes(uploadPhase.size)}`}
-                  {uploadPhase.kind === "confirming" && "Verifying..."}
+                  {uploadPhase.kind === "confirming" &&
+                    (uploadPhase.isPdf ? "Converting your PDF to an image..." : "Verifying...")}
                 </span>
               </div>
               <div className="mt-3">
@@ -778,7 +781,7 @@ export function SubmissionEditor({
                 </div>
               </div>
               <p id="upload-helper-text" className="mt-2 text-xs text-text-muted">
-                Your image uploads to secure storage when you click {mode === "create" ? "Submit VMR" : "Save changes"}. Keep filling out the form while it transfers.
+                Your file uploads to secure storage when you click {mode === "create" ? "Submit VMR" : "Save changes"}. PDFs auto-convert to images after upload. Keep filling out the form while it transfers.
               </p>
               {state.existingFileName && !selectedFile && (
                 <p className="mt-2 text-xs text-text-secondary">
@@ -830,7 +833,9 @@ export function SubmissionEditor({
               ? uploadPhase.kind === "uploading"
                 ? "Uploading..."
                 : uploadPhase.kind === "confirming"
-                  ? "Verifying..."
+                  ? uploadPhase.isPdf
+                    ? "Converting PDF..."
+                    : "Verifying..."
                   : "Saving..."
               : mode === "create"
                 ? "Submit VMR"

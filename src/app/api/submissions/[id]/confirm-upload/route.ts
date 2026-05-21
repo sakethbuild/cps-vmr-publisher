@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { requireInternalAccess } from "@/lib/auth";
-import { MAX_UPLOAD_BYTES, type AllowedImageExtension } from "@/lib/constants";
+import { MAX_UPLOAD_BYTES, type AllowedUploadExtension } from "@/lib/constants";
 import { verifyImageMagicBytes } from "@/lib/image-validation";
+import { convertFirstPdfPageToPng } from "@/lib/pdf-conversion";
 import { prisma } from "@/lib/prisma";
 import { determineStatusForExistingSubmission } from "@/lib/submission";
 import { getStorageService } from "@/lib/storage";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type ConfirmRouteProps = {
   params: Promise<{ id: string }>;
@@ -17,7 +19,7 @@ type ConfirmBody = {
   publicUrl: string;
   storageKey: string;
   sanitizedFileName: string;
-  fileExtension: AllowedImageExtension;
+  fileExtension: AllowedUploadExtension;
   fileMimeType: string;
   originalFileName: string;
 };
@@ -57,17 +59,67 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
     const verification = verifyImageMagicBytes(headerBytes, body.fileExtension);
 
     if (!verification.ok) {
-      await storage.deleteFile(body.publicUrl).catch(() => {
-        // best-effort cleanup
-      });
+      await storage.deleteFile(body.publicUrl).catch(() => {});
       return NextResponse.json(
         { error: verification.reason },
         { status: 400 },
       );
     }
 
+    // Final stored values default to what the client uploaded.
+    let finalStoragePath = body.publicUrl;
+    let finalSanitizedFileName = body.sanitizedFileName;
+    let finalFileExtension: string = body.fileExtension;
+    let finalFileMimeType = body.fileMimeType;
+
+    // PDF auto-conversion: download → render first page → upload PNG → delete PDF.
+    if (verification.format === "pdf") {
+      try {
+        const pdfBytes = await storage.readFile(body.publicUrl);
+        const pngBytes = await convertFirstPdfPageToPng(pdfBytes);
+
+        const pngFileName = body.sanitizedFileName.replace(/\.pdf$/i, ".png");
+        const folder = body.storageKey.includes("/")
+          ? body.storageKey.split("/").slice(0, -1).join("/")
+          : `submissions/${id}`;
+
+        const savedPng = await storage.saveFile({
+          buffer: pngBytes,
+          fileName: pngFileName,
+          folder,
+          contentType: "image/png",
+        });
+
+        // The PDF served its purpose. Best-effort cleanup.
+        await storage.deleteFile(body.publicUrl).catch((cleanupError) => {
+          console.warn(
+            `[confirm-upload] could not delete original PDF after conversion for ${id}:`,
+            cleanupError instanceof Error ? cleanupError.message : cleanupError,
+          );
+        });
+
+        finalStoragePath = savedPng.absolutePath;
+        finalSanitizedFileName = pngFileName;
+        finalFileExtension = "png";
+        finalFileMimeType = "image/png";
+      } catch (conversionError) {
+        // Conversion failed (corrupt PDF, encrypted, etc.). Surface a clear
+        // error and clean up the orphan PDF in R2.
+        await storage.deleteFile(body.publicUrl).catch(() => {});
+        return NextResponse.json(
+          {
+            error:
+              conversionError instanceof Error
+                ? `Could not convert your PDF to an image: ${conversionError.message}. Try exporting your slide as PNG or JPG directly.`
+                : "Could not convert your PDF to an image. Try exporting as PNG or JPG.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const previousStoragePath = submission.storagePath;
-    if (previousStoragePath && previousStoragePath !== body.publicUrl) {
+    if (previousStoragePath && previousStoragePath !== finalStoragePath) {
       await storage.deleteFile(previousStoragePath).catch(() => {
         // best-effort cleanup of replaced file
       });
@@ -76,11 +128,11 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
     const updated = await prisma.submission.update({
       where: { id },
       data: {
-        storagePath: body.publicUrl,
+        storagePath: finalStoragePath,
         originalFileName: body.originalFileName,
-        sanitizedFileName: body.sanitizedFileName,
-        fileMimeType: body.fileMimeType,
-        fileExtension: body.fileExtension,
+        sanitizedFileName: finalSanitizedFileName,
+        fileMimeType: finalFileMimeType,
+        fileExtension: finalFileExtension,
         uploadConfirmedAt: new Date(),
       },
     });
@@ -98,7 +150,11 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
 
     return NextResponse.json({
       ok: true,
-      storagePath: body.publicUrl,
+      storagePath: finalStoragePath,
+      sanitizedFileName: finalSanitizedFileName,
+      fileExtension: finalFileExtension,
+      fileMimeType: finalFileMimeType,
+      converted: verification.format === "pdf",
       status: finalStatus,
     });
   } catch (error) {

@@ -4,9 +4,11 @@ import type { TemplateType } from "@prisma/client";
 
 import {
   ALLOWED_IMAGE_EXTENSIONS,
-  IMAGE_MIME_TYPES,
+  ALLOWED_UPLOAD_EXTENSIONS,
+  UPLOAD_MIME_TYPES,
   TEMPLATE_UPLOAD_RULES,
   type AllowedImageExtension,
+  type AllowedUploadExtension,
 } from "@/lib/constants";
 import { formatDisplayDate } from "@/lib/dates";
 import { getTemplateBaseSlug } from "@/lib/templates";
@@ -28,7 +30,7 @@ export function getFileDetails(filename: string, mimeType?: string | null): File
 export function isAllowedUpload(templateType: TemplateType, extension: string): boolean {
   const rule = TEMPLATE_UPLOAD_RULES[templateType];
   if (!rule) return false;
-  return rule.allowedExtensions.includes(extension as AllowedImageExtension);
+  return rule.allowedExtensions.includes(extension as AllowedUploadExtension);
 }
 
 export function requiresPrimaryUpload(templateType: TemplateType): boolean {
@@ -36,12 +38,18 @@ export function requiresPrimaryUpload(templateType: TemplateType): boolean {
 }
 
 export function mimeTypeForExtension(extension: string): string | null {
-  const ext = extension.toLowerCase() as AllowedImageExtension;
-  return IMAGE_MIME_TYPES[ext] ?? null;
+  const ext = extension.toLowerCase() as AllowedUploadExtension;
+  return UPLOAD_MIME_TYPES[ext] ?? null;
 }
 
 export function isAllowedImageExtension(extension: string): extension is AllowedImageExtension {
   return ALLOWED_IMAGE_EXTENSIONS.includes(extension as AllowedImageExtension);
+}
+
+export function isAllowedUploadExtension(
+  extension: string,
+): extension is AllowedUploadExtension {
+  return ALLOWED_UPLOAD_EXTENSIONS.includes(extension as AllowedUploadExtension);
 }
 
 export function sanitizeSlugPart(value: string): string {

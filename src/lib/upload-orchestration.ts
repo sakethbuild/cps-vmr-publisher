@@ -6,8 +6,8 @@ import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import {
   buildSanitizedFilename,
   getFileDetails,
-  isAllowedImageExtension,
   isAllowedUpload,
+  isAllowedUploadExtension,
   mimeTypeForExtension,
 } from "@/lib/files";
 import { getStorageService } from "@/lib/storage";
@@ -28,8 +28,8 @@ export async function createPresignedUploadForSubmission(params: {
 }): Promise<PresignedUploadResponse> {
   const details = getFileDetails(params.originalFileName, params.declaredMimeType);
 
-  if (!details.extension || !isAllowedImageExtension(details.extension)) {
-    throw new Error("Only PNG or JPG images are allowed.");
+  if (!details.extension || !isAllowedUploadExtension(details.extension)) {
+    throw new Error("Only PNG, JPG, or PDF files are allowed.");
   }
 
   if (!isAllowedUpload(params.templateType, details.extension)) {

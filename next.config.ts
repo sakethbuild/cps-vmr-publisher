@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@libsql/client"],
+  serverExternalPackages: ["@napi-rs/canvas", "@libsql/client"],
 };
 
 export default nextConfig;

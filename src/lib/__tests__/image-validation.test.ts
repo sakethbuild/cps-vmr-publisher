@@ -24,12 +24,23 @@ describe("verifyImageMagicBytes", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("rejects PDF disguised with PNG extension", () => {
+  it("rejects PDF disguised with PNG extension (extension mismatch)", () => {
     const result = verifyImageMagicBytes(PDF_HEADER, "png");
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.reason).toMatch(/PNG or JPG/);
+      expect(result.reason).toMatch(/declared/i);
     }
+  });
+
+  it("accepts a real PDF header when pdf declared", () => {
+    const result = verifyImageMagicBytes(PDF_HEADER, "pdf");
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.format).toBe("pdf");
+  });
+
+  it("rejects PNG when pdf was declared (extension mismatch)", () => {
+    const result = verifyImageMagicBytes(PNG_HEADER, "pdf");
+    expect(result.ok).toBe(false);
   });
 
   it("rejects PNG when JPG was declared (extension mismatch)", () => {

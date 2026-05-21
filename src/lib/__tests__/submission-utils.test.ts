@@ -153,12 +153,12 @@ describe("submission utilities", () => {
     ).toBe("sunday-fundamentals-vmr-march-14-2026.jpg");
   });
 
-  it("regression: PDF uploads are rejected across every template type", () => {
-    expect(isAllowedUpload("standard", "pdf")).toBe(false);
-    expect(isAllowedUpload("raphael_medina_subspecialty", "pdf")).toBe(false);
-    expect(isAllowedUpload("img_vmr", "pdf")).toBe(false);
-    expect(isAllowedUpload("sunday_fundamentals", "pdf")).toBe(false);
-    expect(isAllowedUpload("custom", "pdf")).toBe(false);
+  it("PDF uploads are now allowed across every template (server auto-converts to PNG)", () => {
+    expect(isAllowedUpload("standard", "pdf")).toBe(true);
+    expect(isAllowedUpload("raphael_medina_subspecialty", "pdf")).toBe(true);
+    expect(isAllowedUpload("img_vmr", "pdf")).toBe(true);
+    expect(isAllowedUpload("sunday_fundamentals", "pdf")).toBe(true);
+    expect(isAllowedUpload("custom", "pdf")).toBe(true);
   });
 
   it("accepts PNG and JPG across every template type", () => {
