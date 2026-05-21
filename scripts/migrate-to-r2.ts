@@ -1,6 +1,7 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createCanvas, DOMMatrix, ImageData, Path2D } from "@napi-rs/canvas";
 import { PrismaClient } from "@prisma/client";
+import { getDocument } from "pdfjs-serverless";
 
 async function convertFirstPdfPageToPng(buffer: Buffer): Promise<Buffer> {
   const g = globalThis as unknown as Record<string, unknown>;
@@ -8,8 +9,7 @@ async function convertFirstPdfPageToPng(buffer: Buffer): Promise<Buffer> {
   if (!("ImageData" in g)) g.ImageData = ImageData;
   if (!("Path2D" in g)) g.Path2D = Path2D;
 
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const loadingTask = pdfjs.getDocument({
+  const loadingTask = getDocument({
     data: new Uint8Array(buffer),
     isEvalSupported: false,
   });
