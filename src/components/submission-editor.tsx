@@ -803,6 +803,19 @@ export function SubmissionEditor({
           </div>
         )}
 
+        {mode === "edit" && isPublished && isSuperAdmin && (
+          <div
+            role="status"
+            className="rounded-lg border border-status-warning/30 bg-status-warning-muted px-4 py-3 text-sm text-status-warning"
+          >
+            <p className="font-medium">You are editing a published VMR.</p>
+            <p className="mt-1 text-xs">
+              Changes save immediately to the live public page. Click <strong>Save changes</strong> after editing,
+              or <strong>Unpublish</strong> first if you want to take it offline while you work on it.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
           <Button
             type="submit"

@@ -79,13 +79,29 @@ export function AdminTable({
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleDelete(id: string, title: string) {
+    setError(null);
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/submissions/${id}`, { method: "DELETE" });
-      if (res.ok) router.refresh();
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (res.ok) {
+        router.refresh();
+      } else {
+        setError(
+          data.error ??
+            `Delete failed (HTTP ${res.status}). Refresh and try again, or check the server logs.`,
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `Network error: ${err.message}`
+          : "Network error during delete.",
+      );
     } finally {
       setDeletingId(null);
     }
@@ -140,6 +156,23 @@ export function AdminTable({
 
   return (
     <Card className="p-0 overflow-hidden">
+      {error && (
+        <div
+          role="alert"
+          className="border-b border-status-danger/20 bg-status-danger-muted px-4 py-3 text-sm text-status-danger"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <span>{error}</span>
+            <button
+              type="button"
+              className="text-xs font-medium underline"
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Toolbar: filters + search */}
       <div className="flex flex-col gap-3 border-b border-border-default px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-1">
