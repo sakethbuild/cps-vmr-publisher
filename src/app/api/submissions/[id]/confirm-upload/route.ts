@@ -106,12 +106,14 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
         // Conversion failed (corrupt PDF, encrypted, etc.). Surface a clear
         // error and clean up the orphan PDF in R2.
         await storage.deleteFile(body.publicUrl).catch(() => {});
+        const reason = conversionError instanceof Error
+          ? conversionError.message.replace(/[.\s]+$/, "")
+          : "";
         return NextResponse.json(
           {
-            error:
-              conversionError instanceof Error
-                ? `Could not convert your PDF to an image: ${conversionError.message}. Try exporting your slide as PNG or JPG directly.`
-                : "Could not convert your PDF to an image. Try exporting as PNG or JPG.",
+            error: reason
+              ? `Could not convert your PDF to an image: ${reason}. Try exporting your slide as PNG or JPG directly.`
+              : "Could not convert your PDF to an image. Try exporting as PNG or JPG.",
           },
           { status: 400 },
         );
