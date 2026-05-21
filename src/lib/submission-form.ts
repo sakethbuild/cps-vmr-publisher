@@ -29,7 +29,7 @@ export function createEmptySubmissionFormState(
     youtubeUrl: "",
     notes: "",
     presenters: [emptyPerson()],
-    discussants: [emptyPerson(), emptyPerson()],
+    discussants: [emptyPerson()],
     currentStatus: "submitted",
   };
 }
