@@ -59,7 +59,7 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-text-primary">Dashboard</h1>
           {role && (
@@ -74,14 +74,17 @@ export default async function AdminPage() {
             </span>
           )}
         </div>
-        <Link href="/submit">
-          <Button size="md">New submission</Button>
+        <Link href="/submit" className="shrink-0">
+          <Button size="md" className="whitespace-nowrap">New submission</Button>
         </Link>
       </div>
 
-      <Card className="flex items-center divide-x divide-border-default overflow-x-auto p-0">
+      <Card className="grid grid-cols-2 gap-px bg-border-default p-0 overflow-hidden sm:flex sm:items-center sm:gap-0 sm:divide-x sm:divide-border-default sm:bg-surface-secondary">
         {stats.map((stat) => (
-          <div key={stat.label} className="flex-1 min-w-[120px] px-5 py-4">
+          <div
+            key={stat.label}
+            className="bg-surface-secondary flex-1 min-w-0 px-5 py-4 sm:min-w-[120px]"
+          >
             <p className="text-xs font-medium text-text-muted">{stat.label}</p>
             <p className={`mt-1 text-2xl font-bold ${stat.color}`}>{stat.value}</p>
           </div>
