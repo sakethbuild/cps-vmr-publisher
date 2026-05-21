@@ -33,10 +33,15 @@ export async function DELETE(_request: Request, { params }: SubmissionRouteProps
     }
 
     if (submission.storagePath) {
-      const storage = getStorageService();
-      await storage.deleteFile(submission.storagePath).catch(() => {
-        // best-effort
-      });
+      try {
+        const storage = getStorageService();
+        await storage.deleteFile(submission.storagePath);
+      } catch (storageError) {
+        console.warn(
+          `[delete] storage cleanup failed for submission ${id}; deleting DB row anyway:`,
+          storageError instanceof Error ? storageError.message : storageError,
+        );
+      }
     }
 
     await prisma.submission.delete({ where: { id } });
