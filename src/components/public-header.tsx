@@ -31,9 +31,10 @@ export function PublicHeader() {
           </Link>
           <Link
             href="/submit"
-            className="rounded-lg border border-transparent px-3 py-1.5 text-sm font-semibold text-text-secondary transition-colors hover:border-accent hover:text-accent"
+            className="whitespace-nowrap rounded-lg border border-transparent px-3 py-1.5 text-sm font-semibold text-text-secondary transition-colors hover:border-accent hover:text-accent"
           >
-            Submit a VMR
+            <span className="sm:hidden">Submit</span>
+            <span className="hidden sm:inline">Submit a VMR</span>
           </Link>
           <a
             href="https://www.searchcps.com"
