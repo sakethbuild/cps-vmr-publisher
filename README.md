@@ -6,11 +6,14 @@ The app is now the source of truth. When admin publishes a submission, it become
 
 ## Stack
 
-- Next.js App Router
+- Next.js 16 App Router
 - TypeScript
-- Tailwind CSS
-- Prisma
-- SQLite for local development
+- Tailwind CSS v4
+- Prisma 6 (`@prisma/adapter-libsql`)
+- SQLite locally, Turso (libSQL) in production
+- Cloudflare R2 for upload storage in production (S3-compatible)
+- bcryptjs + HMAC-signed session cookies for auth
+- `pdfjs-serverless` + `@napi-rs/canvas` for first-page PDF → PNG thumbnail rendering
 
 ## What this version includes
 
@@ -20,19 +23,24 @@ The app is now the source of truth. When admin publishes a submission, it become
   - `img_vmr`
   - `sunday_fundamentals`
   - `custom`
+- **PDF-only uploads** across every template (5 MB cap, magic-byte verified)
+- Auto-generated PNG thumbnails (first page) for archive cards and public-page previews
+- Public page renders a thumbnail hero + Download PDF button so quality stays high
+- Two-tier auth: per-user accounts (bcrypt) with super-admin and member roles
+- Shared-credential mode supported (members can be issued a common email + password; member self-service password change is locked down so the shared password can't be rotated by one user)
+- Direct browser → R2 presigned PUT uploads (two-phase: presign → upload → confirm)
 - Structured presenters and discussants with link normalization
 - Consistent `Month Day, Year` date formatting
 - Automatic title generation
 - Status workflow for review and publishing
 - Public archive and public submission pages
-- Local file storage behind a storage service abstraction
-- Sunday Fundamentals image/PDF support
-- Sunday PDF first-page conversion to PNG
-- Admin dashboard for review, editing, publish, unpublish, and WordPress handoff
+- Image lightbox + accessible ARIA across the upload pipeline
+- Admin dashboard for review, editing, publish, unpublish, delete, and WordPress handoff
 
 ## What this version does not include
 
-- Real authentication
+- MFA (TOTP) for super admin — see TODOS
+- Email-based password reset — see TODOS
 - Email ingestion
 - Automatic YouTube lookup
 - Past episodes automation
@@ -112,17 +120,27 @@ npm run dev
 
 ## Environment variables
 
-See `.env.example`:
+See `.env.example`. Required:
 
-- `DATABASE_URL`
-- `STORAGE_ROOT`
-- `APP_BASE_URL`
+- `DATABASE_URL` — `file:./dev.db` locally; `libsql://…?authToken=…` in production
+- `APP_BASE_URL` — public origin (e.g. `https://cps-vmr-publisher.vercel.app`)
+- `SESSION_SECRET` — random 32+ byte string used to sign session cookies
+- `STORAGE_ROOT` — local filesystem path used when R2 is not configured (dev only)
+
+R2 (production):
+
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME`
+- `R2_PUBLIC_BASE_URL` — public read URL prefix for the bucket
+- `CRON_SECRET` — shared secret for the cleanup cron route
 
 ## Upload storage
 
-- Files are stored locally under the directory set by `STORAGE_ROOT`
-- Uploads are streamed back through app routes instead of exposing the storage folder directly
-- The storage layer is abstracted so it can later be replaced with Vercel Blob or another provider
+- Production: Cloudflare R2 (S3-compatible) via `@aws-sdk/client-s3`. The browser uploads PDFs directly to R2 with a presigned PUT URL; the server then HEAD-verifies size and magic bytes before flipping `uploadConfirmedAt`.
+- Dev: local filesystem under `STORAGE_ROOT` behind the same storage interface.
+- PDFs are the canonical file. On confirm, the server renders the first page to PNG via `pdfjs-serverless` and stores it as a sibling `.thumb.png`. Thumbnail generation is non-fatal — if it fails, the submission still saves and the archive falls back to a placeholder.
 
 ## WordPress handoff
 
@@ -165,10 +183,11 @@ npm run prisma:seed
   - the submission moves back into a non-public review status
 - Open `/vmr` and confirm only published submissions appear there.
 - Open a published public page and confirm presenter/discussant links work correctly.
-- Upload a Sunday Fundamentals PDF and confirm:
-  - the first page is converted to PNG
-  - the PNG is shown in admin
-  - the public page uses the image preview
+- Upload a PDF on any template and confirm:
+  - the upload progresses to confirming, then succeeds
+  - a PNG thumbnail is auto-generated and shown on the archive card
+  - the public page shows the thumbnail hero and a working Download PDF button
+- Try to upload a PNG, JPG, or other non-PDF file and confirm the editor rejects it client-side with a "Pick a PDF file" error.
 - Confirm the WordPress handoff panel shows:
   - the public URL
   - the suggested page title
@@ -176,12 +195,12 @@ npm run prisma:seed
 
 ## Important TODO points
 
-- `src/lib/auth.ts`
-  - replace the internal prototype no-op with real authentication and authorization
-- `src/lib/storage/index.ts`
-  - replace local disk storage with Vercel Blob or another production storage provider
-- public hosting
-  - optionally move the public pages from the app URL to a CPS-branded subdomain later
+See `TODOS.md` for the live list. Open items at time of writing:
+
+- MFA (TOTP) for super admin
+- Email-based password reset
+- Post-deploy a11y audit of the PDF upload flow
+- Formalize `DESIGN.md` via `/design-consultation`
 
 ## Seed data
 
@@ -194,11 +213,12 @@ The seed script creates five example submissions:
 
 ## Notes for future integration
 
-- Keep the storage service behind its interface
-- Keep admin access logic behind the auth placeholder
+- Keep the storage service behind its interface — R2 and local-disk implementations both implement the same `StorageService` contract.
+- Auth lives in `src/lib/auth.ts` (User-table backed). Middleware enforces sessions per request; server components re-check via `requireUserOrRedirect()` / `requireSuperAdminOrNotFound()` for defense in depth.
 - When moving into the main app, reuse the shared utilities for:
   - title generation
   - status calculation
   - person link normalization
   - filename sanitization
   - slug generation
+  - PDF first-page thumbnail rendering (`src/lib/pdf-conversion.ts`)
