@@ -68,6 +68,8 @@ model Submission {
   fileMimeType         String?
   fileExtension        String?
   storagePath          String?
+  thumbnailPath        String?
+  thumbnailMimeType    String?
   uploadConfirmedAt    DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt

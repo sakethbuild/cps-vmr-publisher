@@ -34,11 +34,43 @@ function YouTubeEmbed({ url, title }: { url: string; title: string }) {
   );
 }
 
-function ImageHero({ src, alt }: { src: string; alt: string }) {
+function ThumbnailHero({ src, alt }: { src: string; alt: string }) {
   return (
-    <div className="aspect-video w-full overflow-hidden rounded-[10px] border border-border-default bg-black">
+    <div className="aspect-video w-full overflow-hidden rounded-[10px] border border-border-default bg-white">
       <ImageLightbox src={src} alt={alt} className="block h-full w-full" />
     </div>
+  );
+}
+
+function ThumbnailPlaceholder({ title }: { title: string }) {
+  return (
+    <div
+      className="aspect-video w-full rounded-[10px] border border-dashed border-border-default bg-surface-tertiary flex items-center justify-center"
+      aria-label={`Preview not available for ${title}`}
+    >
+      <span className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        Preview unavailable
+      </span>
+    </div>
+  );
+}
+
+function DownloadPdfButton({ href, fileName }: { href: string; fileName?: string | null }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      download={fileName ?? undefined}
+      className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+      Download PDF
+    </a>
   );
 }
 
@@ -85,8 +117,9 @@ export function SubmissionPublicView({
   chiefComplaint,
   presenters,
   discussants,
-  fileUrl,
-  previewImageUrl,
+  pdfUrl,
+  thumbnailUrl,
+  originalFileName,
   notes,
   youtubeUrl,
   className,
@@ -97,20 +130,22 @@ export function SubmissionPublicView({
   chiefComplaint?: string | null;
   presenters: LinkedPerson[];
   discussants: LinkedPerson[];
-  fileUrl?: string | null;
-  previewImageUrl?: string | null;
+  pdfUrl?: string | null;
+  thumbnailUrl?: string | null;
+  originalFileName?: string | null;
   notes?: string | null;
   youtubeUrl?: string | null;
   className?: string;
 }) {
   const noteParagraphs = renderNoteParagraphs(notes);
-  const heroImageUrl = fileUrl ?? previewImageUrl ?? null;
 
   return (
     <article className={cn("space-y-5", className)}>
-      {heroImageUrl && (
-        <ImageHero src={heroImageUrl} alt={`${title} whiteboard`} />
-      )}
+      {thumbnailUrl ? (
+        <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
+      ) : pdfUrl ? (
+        <ThumbnailPlaceholder title={title} />
+      ) : null}
 
       <header>
         <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary sm:text-[28px]">
@@ -120,6 +155,15 @@ export function SubmissionPublicView({
           <p className="mt-2 text-sm text-text-muted">{sessionDateLabel}</p>
         )}
       </header>
+
+      {pdfUrl && (
+        <div className="flex flex-wrap items-center gap-3">
+          <DownloadPdfButton href={pdfUrl} fileName={originalFileName} />
+          <p className="text-xs text-text-muted">
+            Open the full slide deck (PDF).
+          </p>
+        </div>
+      )}
 
       {chiefComplaint?.trim() && (
         <DetailSection title="Chief Concern">

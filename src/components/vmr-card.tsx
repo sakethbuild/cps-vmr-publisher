@@ -14,7 +14,7 @@ type VmrCardSubmission = {
   templateType: string;
   chiefComplaint: string | null;
   youtubeUrl: string | null;
-  storagePath: string | null;
+  thumbnailPath: string | null;
 };
 
 const TEMPLATE_GRADIENTS: Record<string, string> = {
@@ -26,19 +26,12 @@ const TEMPLATE_GRADIENTS: Record<string, string> = {
 };
 
 function resolveThumbnail(submission: VmrCardSubmission): string | null {
+  // YouTube thumbnail takes priority when present (matches SearchCPS pattern).
   if (submission.youtubeUrl) {
     return getYouTubeThumbnailUrl(submission.youtubeUrl);
   }
-  if (submission.storagePath) {
-    if (
-      submission.storagePath.startsWith("http://") ||
-      submission.storagePath.startsWith("https://")
-    ) {
-      return submission.storagePath;
-    }
-    return `/uploads/${submission.id}/original`;
-  }
-  return null;
+  // Otherwise fall back to the auto-generated PDF preview thumbnail.
+  return submission.thumbnailPath;
 }
 
 export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
@@ -74,7 +67,7 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
             </span>
           </div>
         )}
-        <span className="absolute left-2 top-2 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+        <span className="absolute right-2 top-2 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
           {templateLabel}
         </span>
       </div>

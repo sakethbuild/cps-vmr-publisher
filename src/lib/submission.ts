@@ -16,8 +16,8 @@ import { parseSessionDateInput } from "@/lib/dates";
 import {
   buildSanitizedFilename,
   getFileDetails,
-  isAllowedImageExtension,
   isAllowedUpload,
+  isAllowedUploadExtension,
   mimeTypeForExtension,
   requiresPrimaryUpload,
 } from "@/lib/files";
@@ -102,8 +102,8 @@ export function buildUploadDescriptor(params: {
 }): { sanitized: string; extension: string; mimeType: string } {
   const fileDetails = getFileDetails(params.originalFileName, params.declaredMimeType);
 
-  if (!fileDetails.extension || !isAllowedImageExtension(fileDetails.extension)) {
-    throw new Error("Only PNG or JPG images are allowed for VMR uploads.");
+  if (!fileDetails.extension || !isAllowedUploadExtension(fileDetails.extension)) {
+    throw new Error("Only PDF files are allowed for VMR uploads.");
   }
 
   if (!isAllowedUpload(params.templateType, fileDetails.extension)) {

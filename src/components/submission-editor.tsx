@@ -93,7 +93,7 @@ type UploadPhase =
   | { kind: "idle" }
   | { kind: "preparing"; fileName: string; size: number }
   | { kind: "uploading"; fileName: string; size: number; loaded: number }
-  | { kind: "confirming"; fileName: string; size: number; isPdf: boolean }
+  | { kind: "confirming"; fileName: string; size: number }
   | { kind: "error"; message: string };
 
 type PresignedUpload = {
@@ -133,16 +133,18 @@ async function putWithProgress(params: {
 export function SubmissionEditor({
   initialState,
   mode,
-  uploadUrl,
-  previewImageUrl,
+  pdfUrl,
+  thumbnailUrl,
+  originalFileName,
   publicUrl,
   submissionId,
   userRole = "super_admin",
 }: {
   initialState: SubmissionFormState;
   mode: "create" | "edit";
-  uploadUrl?: string | null;
-  previewImageUrl?: string | null;
+  pdfUrl?: string | null;
+  thumbnailUrl?: string | null;
+  originalFileName?: string | null;
   publicUrl?: string | null;
   submissionId?: string;
   userRole?: "member" | "super_admin" | null;
@@ -180,13 +182,13 @@ export function SubmissionEditor({
   function validateLocalFile(file: File): string | null {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext as never)) {
-      return "Pick a PNG, JPG, or PDF. Other formats aren't supported.";
+      return "Pick a PDF file. Other formats aren't supported — export your slides as PDF from PowerPoint or Keynote.";
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       return `That file is ${formatBytes(file.size)} — larger than the ${formatBytes(MAX_UPLOAD_BYTES)} limit. Re-export at a lower resolution or compress before uploading.`;
     }
     if (file.size === 0) {
-      return "That file is empty. Pick a non-empty PNG, JPG, or PDF.";
+      return "That file is empty. Pick a non-empty PDF.";
     }
     return null;
   }
@@ -241,12 +243,10 @@ export function SubmissionEditor({
       }
     }
 
-    const isPdf = params.file.name.toLowerCase().endsWith(".pdf");
     setUploadPhase({
       kind: "confirming",
       fileName: params.file.name,
       size: params.file.size,
-      isPdf,
     });
 
     const confirmResponse = await fetch(
@@ -273,7 +273,7 @@ export function SubmissionEditor({
     if (!confirmResponse.ok || !confirmResult.ok) {
       throw new Error(
         confirmResult.error ??
-          "We couldn't verify that the upload is a valid image. Please try again.",
+          "We couldn't verify that the upload is a valid PDF. Please try again.",
       );
     }
 
@@ -712,7 +712,7 @@ export function SubmissionEditor({
                   {uploadPhase.kind === "uploading" &&
                     `${formatBytes(uploadPhase.loaded)} of ${formatBytes(uploadPhase.size)}`}
                   {uploadPhase.kind === "confirming" &&
-                    (uploadPhase.isPdf ? "Converting your PDF to an image..." : "Verifying...")}
+                    "Generating preview image..."}
                 </span>
               </div>
               <div className="mt-3">
@@ -765,7 +765,7 @@ export function SubmissionEditor({
                       <span className="hidden md:inline">Drag and drop or </span>
                       <span className="font-medium text-accent hover:text-accent-hover">
                         <span className="hidden md:inline">browse files</span>
-                        <span className="md:hidden">Tap to select an image</span>
+                        <span className="md:hidden">Tap to select a PDF</span>
                       </span>
                     </span>
                     <input
@@ -781,7 +781,7 @@ export function SubmissionEditor({
                 </div>
               </div>
               <p id="upload-helper-text" className="mt-2 text-xs text-text-muted">
-                Your file uploads to secure storage when you click {mode === "create" ? "Submit VMR" : "Save changes"}. PDFs auto-convert to images after upload. Keep filling out the form while it transfers.
+                Your PDF uploads to secure storage when you click {mode === "create" ? "Submit VMR" : "Save changes"}. We auto-generate a preview image of the first page for the archive cards. Keep filling out the form while it transfers.
               </p>
               {state.existingFileName && !selectedFile && (
                 <p className="mt-2 text-xs text-text-secondary">
@@ -833,9 +833,7 @@ export function SubmissionEditor({
               ? uploadPhase.kind === "uploading"
                 ? "Uploading..."
                 : uploadPhase.kind === "confirming"
-                  ? uploadPhase.isPdf
-                    ? "Converting PDF..."
-                    : "Verifying..."
+                  ? "Generating preview..."
                   : "Saving..."
               : mode === "create"
                 ? "Submit VMR"
@@ -907,7 +905,7 @@ export function SubmissionEditor({
         <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
           {submissionId && (
             <Card>
-              <SectionLabel>Replace image</SectionLabel>
+              <SectionLabel>Replace PDF</SectionLabel>
               <label className="block">
                 <Button
                   type="button"
@@ -925,7 +923,7 @@ export function SubmissionEditor({
                 />
               </label>
               <p className="mt-2 text-xs text-text-muted">
-                Picking a new file replaces the current image immediately and deletes the old one.
+                Picking a new file replaces the current PDF immediately, regenerates the preview, and deletes the old files.
               </p>
             </Card>
           )}
@@ -984,8 +982,9 @@ export function SubmissionEditor({
               chiefComplaint={state.chiefComplaint}
               presenters={presentersPreview}
               discussants={discussantsPreview}
-              fileUrl={uploadUrl}
-              previewImageUrl={previewImageUrl}
+              pdfUrl={pdfUrl}
+              thumbnailUrl={thumbnailUrl}
+              originalFileName={originalFileName}
               notes={state.notes}
               youtubeUrl={state.youtubeUrl}
               className="shadow-none border-0 p-0"

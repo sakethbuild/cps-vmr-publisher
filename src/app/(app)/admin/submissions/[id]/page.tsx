@@ -30,8 +30,8 @@ export default async function SubmissionDetailPage({
     notFound();
   }
 
-  const uploadUrl = submission.storagePath ?? null;
-  const previewImageUrl = uploadUrl;
+  const pdfUrl = submission.storagePath ?? null;
+  const thumbnailUrl = submission.thumbnailPath ?? null;
   const role = user.role;
 
   return (
@@ -51,8 +51,9 @@ export default async function SubmissionDetailPage({
         mode="edit"
         initialState={toFormState(submission)}
         submissionId={submission.id}
-        uploadUrl={uploadUrl}
-        previewImageUrl={previewImageUrl}
+        pdfUrl={pdfUrl}
+        thumbnailUrl={thumbnailUrl}
+        originalFileName={submission.originalFileName}
         publicUrl={submission.slug ? buildSubmissionPublicUrl(submission.slug) : null}
         userRole={role}
       />

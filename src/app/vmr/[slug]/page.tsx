@@ -45,8 +45,8 @@ export default async function PublicSubmissionPage({
 
   if (!submission) notFound();
 
-  const uploadUrl = submission.storagePath ?? null;
-  const previewImageUrl = uploadUrl;
+  const pdfUrl = submission.storagePath ?? null;
+  const thumbnailUrl = submission.thumbnailPath ?? null;
   const presenters = buildLinkedPeople(
     submission.people
       .filter((p) => p.role === "presenter")
@@ -87,8 +87,9 @@ export default async function PublicSubmissionPage({
         chiefComplaint={submission.chiefComplaint}
         presenters={presenters}
         discussants={discussants}
-        fileUrl={uploadUrl}
-        previewImageUrl={previewImageUrl}
+        pdfUrl={pdfUrl}
+        thumbnailUrl={thumbnailUrl}
+        originalFileName={submission.originalFileName}
         notes={submission.notes}
         youtubeUrl={submission.youtubeUrl}
       />

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { requireInternalAccess } from "@/lib/auth";
-import { MAX_UPLOAD_BYTES, type AllowedUploadExtension } from "@/lib/constants";
+import {
+  MAX_UPLOAD_BYTES,
+  THUMBNAIL_MIME_TYPE,
+  type AllowedUploadExtension,
+} from "@/lib/constants";
 import { verifyImageMagicBytes } from "@/lib/image-validation";
 import { convertFirstPdfPageToPng } from "@/lib/pdf-conversion";
 import { prisma } from "@/lib/prisma";
@@ -66,75 +70,55 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
       );
     }
 
-    // Final stored values default to what the client uploaded.
-    let finalStoragePath = body.publicUrl;
-    let finalSanitizedFileName = body.sanitizedFileName;
-    let finalFileExtension: string = body.fileExtension;
-    let finalFileMimeType = body.fileMimeType;
+    // The PDF stays as the canonical asset. Generate a PNG thumbnail (first
+    // page) for the archive card + public-page preview.
+    let thumbnailPath: string | null = null;
+    let thumbnailMimeType: string | null = null;
+    try {
+      const pdfBytes = await storage.readFile(body.publicUrl);
+      const pngBytes = await convertFirstPdfPageToPng(pdfBytes);
 
-    // PDF auto-conversion: download → render first page → upload PNG → delete PDF.
-    if (verification.format === "pdf") {
-      try {
-        const pdfBytes = await storage.readFile(body.publicUrl);
-        const pngBytes = await convertFirstPdfPageToPng(pdfBytes);
+      const thumbnailFileName = body.sanitizedFileName.replace(/\.pdf$/i, ".thumb.png");
+      const folder = body.storageKey.includes("/")
+        ? body.storageKey.split("/").slice(0, -1).join("/")
+        : `submissions/${id}`;
 
-        const pngFileName = body.sanitizedFileName.replace(/\.pdf$/i, ".png");
-        const folder = body.storageKey.includes("/")
-          ? body.storageKey.split("/").slice(0, -1).join("/")
-          : `submissions/${id}`;
-
-        const savedPng = await storage.saveFile({
-          buffer: pngBytes,
-          fileName: pngFileName,
-          folder,
-          contentType: "image/png",
-        });
-
-        // The PDF served its purpose. Best-effort cleanup.
-        await storage.deleteFile(body.publicUrl).catch((cleanupError) => {
-          console.warn(
-            `[confirm-upload] could not delete original PDF after conversion for ${id}:`,
-            cleanupError instanceof Error ? cleanupError.message : cleanupError,
-          );
-        });
-
-        finalStoragePath = savedPng.absolutePath;
-        finalSanitizedFileName = pngFileName;
-        finalFileExtension = "png";
-        finalFileMimeType = "image/png";
-      } catch (conversionError) {
-        // Conversion failed (corrupt PDF, encrypted, etc.). Surface a clear
-        // error and clean up the orphan PDF in R2.
-        await storage.deleteFile(body.publicUrl).catch(() => {});
-        const reason = conversionError instanceof Error
-          ? conversionError.message.replace(/[.\s]+$/, "")
-          : "";
-        return NextResponse.json(
-          {
-            error: reason
-              ? `Could not convert your PDF to an image: ${reason}. Try exporting your slide as PNG or JPG directly.`
-              : "Could not convert your PDF to an image. Try exporting as PNG or JPG.",
-          },
-          { status: 400 },
-        );
-      }
+      const savedThumb = await storage.saveFile({
+        buffer: pngBytes,
+        fileName: thumbnailFileName,
+        folder,
+        contentType: THUMBNAIL_MIME_TYPE,
+      });
+      thumbnailPath = savedThumb.absolutePath;
+      thumbnailMimeType = THUMBNAIL_MIME_TYPE;
+    } catch (conversionError) {
+      // Thumbnail generation failed (corrupt PDF, encrypted, weird fonts).
+      // Don't fail the whole upload — the PDF is still useful as a download.
+      // Surface the diagnostic in logs for ops follow-up.
+      console.warn(
+        `[confirm-upload] thumbnail generation failed for ${id}; proceeding without thumbnail:`,
+        conversionError instanceof Error ? conversionError.message : conversionError,
+      );
     }
 
     const previousStoragePath = submission.storagePath;
-    if (previousStoragePath && previousStoragePath !== finalStoragePath) {
-      await storage.deleteFile(previousStoragePath).catch(() => {
-        // best-effort cleanup of replaced file
-      });
+    if (previousStoragePath && previousStoragePath !== body.publicUrl) {
+      await storage.deleteFile(previousStoragePath).catch(() => {});
+    }
+    if (submission.thumbnailPath && submission.thumbnailPath !== thumbnailPath) {
+      await storage.deleteFile(submission.thumbnailPath).catch(() => {});
     }
 
     const updated = await prisma.submission.update({
       where: { id },
       data: {
-        storagePath: finalStoragePath,
+        storagePath: body.publicUrl,
         originalFileName: body.originalFileName,
-        sanitizedFileName: finalSanitizedFileName,
-        fileMimeType: finalFileMimeType,
-        fileExtension: finalFileExtension,
+        sanitizedFileName: body.sanitizedFileName,
+        fileMimeType: body.fileMimeType,
+        fileExtension: body.fileExtension,
+        thumbnailPath,
+        thumbnailMimeType,
         uploadConfirmedAt: new Date(),
       },
     });
@@ -152,11 +136,12 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
 
     return NextResponse.json({
       ok: true,
-      storagePath: finalStoragePath,
-      sanitizedFileName: finalSanitizedFileName,
-      fileExtension: finalFileExtension,
-      fileMimeType: finalFileMimeType,
-      converted: verification.format === "pdf",
+      storagePath: body.publicUrl,
+      thumbnailPath,
+      sanitizedFileName: body.sanitizedFileName,
+      fileExtension: body.fileExtension,
+      fileMimeType: body.fileMimeType,
+      thumbnailGenerated: thumbnailPath !== null,
       status: finalStatus,
     });
   } catch (error) {

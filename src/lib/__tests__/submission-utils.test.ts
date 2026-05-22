@@ -140,20 +140,20 @@ describe("submission utilities", () => {
       buildSanitizedFilename({
         templateType: "standard",
         sessionDate: "2026-03-14",
-        extension: "png",
+        extension: "pdf",
       }),
-    ).toBe("virtual-morning-report-march-14-2026.png");
+    ).toBe("virtual-morning-report-march-14-2026.pdf");
 
     expect(
       buildSanitizedFilename({
         templateType: "sunday_fundamentals",
         sessionDate: "2026-03-14",
-        extension: "jpg",
+        extension: "pdf",
       }),
-    ).toBe("sunday-fundamentals-vmr-march-14-2026.jpg");
+    ).toBe("sunday-fundamentals-vmr-march-14-2026.pdf");
   });
 
-  it("PDF uploads are now allowed across every template (server auto-converts to PNG)", () => {
+  it("PDF uploads are accepted across every template type", () => {
     expect(isAllowedUpload("standard", "pdf")).toBe(true);
     expect(isAllowedUpload("raphael_medina_subspecialty", "pdf")).toBe(true);
     expect(isAllowedUpload("img_vmr", "pdf")).toBe(true);
@@ -161,7 +161,7 @@ describe("submission utilities", () => {
     expect(isAllowedUpload("custom", "pdf")).toBe(true);
   });
 
-  it("accepts PNG and JPG across every template type", () => {
+  it("regression: PNG and JPG uploads are now rejected (PDF-only since 2026-05-21)", () => {
     for (const template of [
       "standard",
       "raphael_medina_subspecialty",
@@ -169,9 +169,9 @@ describe("submission utilities", () => {
       "sunday_fundamentals",
       "custom",
     ] as const) {
-      expect(isAllowedUpload(template, "png")).toBe(true);
-      expect(isAllowedUpload(template, "jpg")).toBe(true);
-      expect(isAllowedUpload(template, "jpeg")).toBe(true);
+      expect(isAllowedUpload(template, "png")).toBe(false);
+      expect(isAllowedUpload(template, "jpg")).toBe(false);
+      expect(isAllowedUpload(template, "jpeg")).toBe(false);
     }
   });
 
@@ -181,11 +181,13 @@ describe("submission utilities", () => {
     expect(requiresPrimaryUpload("sunday_fundamentals")).toBe(true);
   });
 
-  it("rejects non-image extensions", () => {
+  it("rejects everything that's not pdf", () => {
     expect(isAllowedUpload("standard", "exe")).toBe(false);
     expect(isAllowedUpload("standard", "gif")).toBe(false);
     expect(isAllowedUpload("standard", "")).toBe(false);
     expect(isAllowedUpload("standard", "webp")).toBe(false);
+    expect(isAllowedUpload("standard", "png")).toBe(false);
+    expect(isAllowedUpload("standard", "jpg")).toBe(false);
   });
 
   it("renders linked people for public pages", () => {

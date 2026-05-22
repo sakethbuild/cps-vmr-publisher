@@ -3,11 +3,9 @@ import path from "node:path";
 import type { TemplateType } from "@prisma/client";
 
 import {
-  ALLOWED_IMAGE_EXTENSIONS,
   ALLOWED_UPLOAD_EXTENSIONS,
   UPLOAD_MIME_TYPES,
   TEMPLATE_UPLOAD_RULES,
-  type AllowedImageExtension,
   type AllowedUploadExtension,
 } from "@/lib/constants";
 import { formatDisplayDate } from "@/lib/dates";
@@ -40,10 +38,6 @@ export function requiresPrimaryUpload(templateType: TemplateType): boolean {
 export function mimeTypeForExtension(extension: string): string | null {
   const ext = extension.toLowerCase() as AllowedUploadExtension;
   return UPLOAD_MIME_TYPES[ext] ?? null;
-}
-
-export function isAllowedImageExtension(extension: string): extension is AllowedImageExtension {
-  return ALLOWED_IMAGE_EXTENSIONS.includes(extension as AllowedImageExtension);
 }
 
 export function isAllowedUploadExtension(

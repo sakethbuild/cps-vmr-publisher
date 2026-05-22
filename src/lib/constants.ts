@@ -23,28 +23,18 @@ export const PERSON_LINK_TYPE_OPTIONS = [
   "custom",
 ] as const;
 
-// Final-form image extensions stored in R2 (PDFs get converted to PNG on confirm).
-export const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"] as const;
-export type AllowedImageExtension = (typeof ALLOWED_IMAGE_EXTENSIONS)[number];
-
-// Extensions the client is allowed to UPLOAD. PDFs get auto-converted to PNG
-// server-side in the confirm-upload route.
-export const ALLOWED_UPLOAD_EXTENSIONS = ["png", "jpg", "jpeg", "pdf"] as const;
+// Upload is now PDF-only. The server generates a small PNG thumbnail for the
+// archive card + public-page preview, but the canonical asset is the PDF.
+export const ALLOWED_UPLOAD_EXTENSIONS = ["pdf"] as const;
 export type AllowedUploadExtension = (typeof ALLOWED_UPLOAD_EXTENSIONS)[number];
 
 export const UPLOAD_MIME_TYPES: Record<AllowedUploadExtension, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
   pdf: "application/pdf",
 };
 
-// Subset of UPLOAD_MIME_TYPES, kept for callers that only need the image forms.
-export const IMAGE_MIME_TYPES: Record<AllowedImageExtension, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-};
+// Thumbnail format — PNG, generated server-side from the first page of the PDF.
+export const THUMBNAIL_MIME_TYPE = "image/png";
+export const THUMBNAIL_EXTENSION = "png";
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -60,27 +50,27 @@ export const TEMPLATE_UPLOAD_RULES: Record<
 > = {
   standard: {
     allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
-    label: "PNG, JPG, or PDF (PDFs auto-convert to images)",
+    label: "PDF only",
     required: true,
   },
   raphael_medina_subspecialty: {
     allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
-    label: "PNG, JPG, or PDF (PDFs auto-convert to images)",
+    label: "PDF only",
     required: true,
   },
   img_vmr: {
     allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
-    label: "PNG, JPG, or PDF (PDFs auto-convert to images)",
+    label: "PDF only",
     required: true,
   },
   sunday_fundamentals: {
     allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
-    label: "PNG, JPG, or PDF (PDFs auto-convert to images)",
+    label: "PDF only",
     required: true,
   },
   custom: {
     allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
-    label: "Optional PNG, JPG, or PDF",
+    label: "Optional PDF",
     required: false,
   },
 };
