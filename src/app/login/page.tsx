@@ -42,6 +42,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col bg-surface-primary">
       <header className="border-b border-border-default bg-surface-secondary">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:px-6">
+          <Logo wordmark="VMR" size={32} />
           <a
             href="https://www.searchcps.com"
             className="ml-auto rounded-lg border border-border-default bg-surface-tertiary px-3 py-1.5 text-sm font-semibold text-text-muted transition-colors hover:border-accent hover:text-accent"
