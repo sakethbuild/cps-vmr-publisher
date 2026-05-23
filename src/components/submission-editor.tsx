@@ -436,7 +436,7 @@ export function SubmissionEditor({
       });
       setUploadPhase({ kind: "idle" });
       setSelectedFile(null);
-      setFeedback({ tone: "success", message: "Image replaced." });
+      setFeedback({ tone: "success", message: "PDF replaced." });
       router.refresh();
     } catch (error) {
       setUploadPhase({
