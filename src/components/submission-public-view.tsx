@@ -145,15 +145,15 @@ export function SubmissionPublicView({
   const hasPreview = Boolean(thumbnailUrl || pdfUrl);
 
   return (
-    <article className={cn("space-y-5", className)}>
+    <article className={cn("@container space-y-5", className)}>
       <div
         className={cn(
           hasPreview &&
-            "lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start lg:gap-8",
+            "@[640px]:grid @[640px]:grid-cols-[minmax(0,420px)_minmax(0,1fr)] @[640px]:items-start @[640px]:gap-8",
         )}
       >
         {hasPreview && (
-          <div className="lg:sticky lg:top-6">
+          <div className="@[640px]:sticky @[640px]:top-6">
             {thumbnailUrl ? (
               <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
             ) : (
@@ -162,7 +162,7 @@ export function SubmissionPublicView({
           </div>
         )}
 
-        <div className={cn("space-y-5", hasPreview && "mt-5 lg:mt-0")}>
+        <div className={cn("space-y-5", hasPreview && "mt-5 @[640px]:mt-0")}>
           <header>
             <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary sm:text-[28px]">
               {title}
