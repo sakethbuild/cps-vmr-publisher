@@ -22,11 +22,14 @@ function YouTubeEmbed({ url, title }: { url: string; title: string }) {
     );
   }
   return (
-    <div className="aspect-video w-full overflow-hidden rounded-[10px] border border-border-default bg-black">
+    <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-border-default bg-surface-tertiary">
+      <div className="absolute inset-0 flex items-center justify-center text-xs font-medium uppercase tracking-wider text-text-muted">
+        Loading video…
+      </div>
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${videoId}`}
         title={title}
-        className="h-full w-full"
+        className="relative h-full w-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
       />
