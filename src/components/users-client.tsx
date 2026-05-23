@@ -119,8 +119,8 @@ export function UsersClient({ initialUsers }: { initialUsers: UserListItem[] }) 
             Password set for {createdNotice.email}
           </p>
           <p className="mt-2 text-sm text-text-secondary">
-            Share this password with them privately. They can change it after signing in
-            at /admin/account.
+            Share this password with them privately. Only super admins can rotate it
+            later — keep it somewhere safe.
           </p>
           <code className="mt-3 block rounded-md bg-surface-tertiary px-3 py-2 font-mono text-sm text-text-primary">
             {createdNotice.initialPassword}
