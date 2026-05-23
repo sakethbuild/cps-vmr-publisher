@@ -161,6 +161,7 @@ export function SubmissionEditor({
     message: string;
   } | null>(null);
   const feedbackRef = useRef<HTMLDivElement | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (feedback?.tone === "error") {
       feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -913,22 +914,26 @@ export function SubmissionEditor({
           {submissionId && (
             <Card>
               <SectionLabel>Replace PDF</SectionLabel>
-              <label className="block">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full pointer-events-none"
-                >
-                  Choose replacement
-                </Button>
-                <input
-                  type="file"
-                  accept={ACCEPT_EXTENSIONS}
-                  onChange={(e) => handleFilePicked(e.target.files?.[0] ?? null)}
-                  className="sr-only"
-                />
-              </label>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={() => replaceInputRef.current?.click()}
+              >
+                Choose replacement
+              </Button>
+              <input
+                ref={replaceInputRef}
+                type="file"
+                accept={ACCEPT_EXTENSIONS}
+                onChange={(e) => {
+                  handleFilePicked(e.target.files?.[0] ?? null);
+                  // Reset so picking the same file twice in a row still fires onChange
+                  e.target.value = "";
+                }}
+                className="sr-only"
+              />
               <p className="mt-2 text-xs text-text-muted">
                 Picking a new file replaces the current PDF immediately, regenerates the preview, and deletes the old files.
               </p>
