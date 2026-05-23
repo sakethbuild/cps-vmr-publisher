@@ -34,9 +34,22 @@ export function ImageLightbox({ src, alt, className }: ImageLightboxProps) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    // iframes (especially YouTube embeds) create their own browsing context
+    // that escapes normal z-index stacking — they render *through* fixed
+    // overlays on Chromium and Safari. Hide them while the lightbox is open,
+    // then restore previous visibility on close.
+    const iframes = Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe"));
+    const previousVisibility = iframes.map((iframe) => iframe.style.visibility);
+    iframes.forEach((iframe) => {
+      iframe.style.visibility = "hidden";
+    });
+
     return () => {
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = previousOverflow;
+      iframes.forEach((iframe, index) => {
+        iframe.style.visibility = previousVisibility[index] ?? "";
+      });
     };
   }, [open, close]);
 
