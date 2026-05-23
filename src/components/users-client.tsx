@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { formatDisplayDate } from "@/lib/dates";
 
 export type UserListItem = {
   id: string;
@@ -206,7 +207,7 @@ export function UsersClient({ initialUsers }: { initialUsers: UserListItem[] }) 
                   </Select>
                 </td>
                 <td className="px-4 py-3 text-xs text-text-muted">
-                  {new Date(user.createdAt).toLocaleDateString()}
+                  {formatDisplayDate(user.createdAt)}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap items-center justify-end gap-2">
