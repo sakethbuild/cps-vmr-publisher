@@ -175,22 +175,26 @@ export function AdminTable({
       )}
       {/* Toolbar: filters + search */}
       <div className="flex flex-col gap-3 border-b border-border-default px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-1">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                statusFilter === f.value
-                  ? "bg-accent-muted text-accent"
-                  : "text-text-muted hover:text-text-primary hover:bg-surface-tertiary",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by status">
+          {STATUS_FILTERS.map((f) => {
+            const isActive = statusFilter === f.value;
+            return (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setStatusFilter(f.value)}
+                aria-pressed={isActive}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  isActive
+                    ? "bg-accent-muted text-accent"
+                    : "text-text-muted hover:text-text-primary hover:bg-surface-tertiary",
+                )}
+              >
+                {f.label}
+              </button>
+            );
+          })}
         </div>
         <Input
           type="search"
