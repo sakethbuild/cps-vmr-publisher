@@ -2,7 +2,7 @@ import "server-only";
 
 import type { TemplateType } from "@prisma/client";
 
-import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+import { MAX_UPLOAD_BYTES, THUMBNAIL_MIME_TYPE } from "@/lib/constants";
 import {
   buildSanitizedFilename,
   getFileDetails,
@@ -17,6 +17,16 @@ export type PresignedUploadResponse = PresignedUploadResult & {
   sanitizedFileName: string;
   fileExtension: string;
   fileMimeType: string;
+  // Optional second presigned URL for the auto-generated PNG thumbnail.
+  // Returned alongside the PDF presign so the client can upload both
+  // files in parallel.
+  thumbnailUpload?: {
+    uploadUrl: string;
+    publicUrl: string;
+    storageKey: string;
+    sanitizedFileName: string;
+    contentType: string;
+  };
 };
 
 export async function createPresignedUploadForSubmission(params: {
@@ -29,7 +39,7 @@ export async function createPresignedUploadForSubmission(params: {
   const details = getFileDetails(params.originalFileName, params.declaredMimeType);
 
   if (!details.extension || !isAllowedUploadExtension(details.extension)) {
-    throw new Error("Only PNG, JPG, or PDF files are allowed.");
+    throw new Error("Only PDF files are allowed for VMR uploads.");
   }
 
   if (!isAllowedUpload(params.templateType, details.extension)) {
@@ -54,10 +64,22 @@ export async function createPresignedUploadForSubmission(params: {
     );
   }
 
+  const folder = `submissions/${params.submissionId}`;
   const presigned = await storage.createPresignedUpload({
-    folder: `submissions/${params.submissionId}`,
+    folder,
     fileName: sanitized,
     contentType: mimeType,
+    maxBytes: MAX_UPLOAD_BYTES,
+  });
+
+  // Sibling thumbnail upload: same folder, same base filename, .thumb.png.
+  // The client renders the first page of the PDF to PNG before upload,
+  // so the server never has to do CPU-heavy PDF work.
+  const thumbnailFileName = sanitized.replace(/\.pdf$/i, ".thumb.png");
+  const thumbnailPresigned = await storage.createPresignedUpload({
+    folder,
+    fileName: thumbnailFileName,
+    contentType: THUMBNAIL_MIME_TYPE,
     maxBytes: MAX_UPLOAD_BYTES,
   });
 
@@ -66,5 +88,12 @@ export async function createPresignedUploadForSubmission(params: {
     sanitizedFileName: sanitized,
     fileExtension: details.extension,
     fileMimeType: mimeType,
+    thumbnailUpload: {
+      uploadUrl: thumbnailPresigned.uploadUrl,
+      publicUrl: thumbnailPresigned.publicUrl,
+      storageKey: thumbnailPresigned.storageKey,
+      sanitizedFileName: thumbnailFileName,
+      contentType: THUMBNAIL_MIME_TYPE,
+    },
   };
 }

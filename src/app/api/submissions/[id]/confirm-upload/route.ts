@@ -7,13 +7,11 @@ import {
   type AllowedUploadExtension,
 } from "@/lib/constants";
 import { verifyImageMagicBytes } from "@/lib/image-validation";
-import { convertFirstPdfPageToPng } from "@/lib/pdf-conversion";
 import { prisma } from "@/lib/prisma";
 import { determineStatusForExistingSubmission } from "@/lib/submission";
 import { getStorageService } from "@/lib/storage";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 
 type ConfirmRouteProps = {
   params: Promise<{ id: string }>;
@@ -26,6 +24,15 @@ type ConfirmBody = {
   fileExtension: AllowedUploadExtension;
   fileMimeType: string;
   originalFileName: string;
+  // Client-rendered thumbnail metadata. Browser renders the first PDF
+  // page to PNG via pdfjs-dist + canvas (real browser canvas, no native
+  // binary), then uploads to R2 via its own presigned URL. Server just
+  // records the path.
+  thumbnail?: {
+    publicUrl: string;
+    storageKey: string;
+    sanitizedFileName: string;
+  } | null;
 };
 
 export async function POST(request: Request, { params }: ConfirmRouteProps) {
@@ -48,9 +55,14 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
 
     const storage = getStorageService();
 
+    // Guard 1: enforce the size cap server-side. Client validation can be
+    // bypassed; verify the actual bytes in R2.
     const contentLength = await storage.getContentLength(body.publicUrl);
     if (contentLength !== null && contentLength > MAX_UPLOAD_BYTES) {
       await storage.deleteFile(body.publicUrl).catch(() => {});
+      if (body.thumbnail?.publicUrl) {
+        await storage.deleteFile(body.thumbnail.publicUrl).catch(() => {});
+      }
       return NextResponse.json(
         {
           error: `File is ${(contentLength / 1024 / 1024).toFixed(1)} MB — larger than the ${(MAX_UPLOAD_BYTES / 1024 / 1024).toFixed(0)} MB limit.`,
@@ -59,53 +71,34 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
       );
     }
 
+    // Guard 2: verify the bytes actually start with %PDF, not just trust
+    // the client's claim. Stops attempts to upload non-PDFs via spoofed
+    // file extensions.
     const headerBytes = await storage.readByteRange(body.publicUrl, 0, 15);
     const verification = verifyImageMagicBytes(headerBytes, body.fileExtension);
-
     if (!verification.ok) {
       await storage.deleteFile(body.publicUrl).catch(() => {});
+      if (body.thumbnail?.publicUrl) {
+        await storage.deleteFile(body.thumbnail.publicUrl).catch(() => {});
+      }
       return NextResponse.json(
         { error: verification.reason },
         { status: 400 },
       );
     }
 
-    // The PDF stays as the canonical asset. Generate a PNG thumbnail (first
-    // page) for the archive card + public-page preview.
-    let thumbnailPath: string | null = null;
-    let thumbnailMimeType: string | null = null;
-    try {
-      const pdfBytes = await storage.readFile(body.publicUrl);
-      const pngBytes = await convertFirstPdfPageToPng(pdfBytes);
-
-      const thumbnailFileName = body.sanitizedFileName.replace(/\.pdf$/i, ".thumb.png");
-      const folder = body.storageKey.includes("/")
-        ? body.storageKey.split("/").slice(0, -1).join("/")
-        : `submissions/${id}`;
-
-      const savedThumb = await storage.saveFile({
-        buffer: pngBytes,
-        fileName: thumbnailFileName,
-        folder,
-        contentType: THUMBNAIL_MIME_TYPE,
-      });
-      thumbnailPath = savedThumb.absolutePath;
-      thumbnailMimeType = THUMBNAIL_MIME_TYPE;
-    } catch (conversionError) {
-      // Thumbnail generation failed (corrupt PDF, encrypted, weird fonts).
-      // Don't fail the whole upload — the PDF is still useful as a download.
-      // Surface the diagnostic in logs for ops follow-up.
-      console.warn(
-        `[confirm-upload] thumbnail generation failed for ${id}; proceeding without thumbnail:`,
-        conversionError instanceof Error ? conversionError.message : conversionError,
-      );
-    }
-
+    // Replace path: delete previous canonical PDF + previous thumbnail if
+    // the new URLs differ (R2 paths can be stable across replaces, in
+    // which case the bytes are overwritten and no cleanup is needed).
     const previousStoragePath = submission.storagePath;
     if (previousStoragePath && previousStoragePath !== body.publicUrl) {
       await storage.deleteFile(previousStoragePath).catch(() => {});
     }
-    if (submission.thumbnailPath && submission.thumbnailPath !== thumbnailPath) {
+    const newThumbnailPath = body.thumbnail?.publicUrl ?? null;
+    if (
+      submission.thumbnailPath &&
+      submission.thumbnailPath !== newThumbnailPath
+    ) {
       await storage.deleteFile(submission.thumbnailPath).catch(() => {});
     }
 
@@ -117,8 +110,8 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
         sanitizedFileName: body.sanitizedFileName,
         fileMimeType: body.fileMimeType,
         fileExtension: body.fileExtension,
-        thumbnailPath,
-        thumbnailMimeType,
+        thumbnailPath: newThumbnailPath,
+        thumbnailMimeType: newThumbnailPath ? THUMBNAIL_MIME_TYPE : null,
         uploadConfirmedAt: new Date(),
       },
     });
@@ -137,11 +130,11 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
     return NextResponse.json({
       ok: true,
       storagePath: body.publicUrl,
-      thumbnailPath,
+      thumbnailPath: newThumbnailPath,
       sanitizedFileName: body.sanitizedFileName,
       fileExtension: body.fileExtension,
       fileMimeType: body.fileMimeType,
-      thumbnailGenerated: thumbnailPath !== null,
+      thumbnailGenerated: Boolean(newThumbnailPath),
       status: finalStatus,
     });
   } catch (error) {

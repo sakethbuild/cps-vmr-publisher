@@ -105,6 +105,15 @@ type PresignedUpload = {
   fileMimeType: string;
   originalFileName: string;
   expiresInSeconds: number;
+  // Sibling thumbnail presign — the client renders the first PDF page to PNG
+  // and uploads to this URL in parallel with the PDF. Server never renders.
+  thumbnailUpload?: {
+    uploadUrl: string;
+    publicUrl: string;
+    storageKey: string;
+    sanitizedFileName: string;
+    contentType: string;
+  };
 };
 
 async function putWithProgress(params: {
@@ -220,21 +229,23 @@ export function SubmissionEditor({
       loaded: 0,
     });
 
+    // Render the first-page thumbnail in the browser BEFORE uploading.
+    // Best-effort: if rendering fails (corrupt PDF, very large, etc.) we
+    // proceed without a thumbnail rather than blocking the whole upload.
+    let thumbnailBlob: Blob | null = null;
     try {
-      await putWithProgress({
-        url: params.presigned.uploadUrl,
-        file: params.file,
-        contentType: params.presigned.fileMimeType,
-        onProgress: (loaded) => {
-          setUploadPhase({
-            kind: "uploading",
-            fileName: params.file.name,
-            size: params.file.size,
-            loaded,
-          });
-        },
-      });
-    } catch {
+      const { renderPdfFirstPageToPngBlob } = await import(
+        "@/lib/client-pdf-render"
+      );
+      thumbnailBlob = await renderPdfFirstPageToPngBlob(params.file);
+    } catch (thumbError) {
+      console.warn(
+        "[upload] thumbnail rendering failed; proceeding without thumbnail:",
+        thumbError,
+      );
+    }
+
+    const uploadPdf = async () => {
       try {
         await putWithProgress({
           url: params.presigned.uploadUrl,
@@ -249,13 +260,59 @@ export function SubmissionEditor({
             });
           },
         });
-      } catch (retryError) {
-        throw new Error(
-          retryError instanceof Error
-            ? `Upload interrupted: ${retryError.message}. Check your connection and try again.`
-            : "Upload interrupted. Check your connection and try again.",
-        );
+      } catch {
+        // One retry on transient network failure.
+        await putWithProgress({
+          url: params.presigned.uploadUrl,
+          file: params.file,
+          contentType: params.presigned.fileMimeType,
+          onProgress: (loaded) => {
+            setUploadPhase({
+              kind: "uploading",
+              fileName: params.file.name,
+              size: params.file.size,
+              loaded,
+            });
+          },
+        });
       }
+    };
+
+    const uploadThumbnail = async () => {
+      if (!thumbnailBlob || !params.presigned.thumbnailUpload) return;
+      const thumbFile = new File(
+        [thumbnailBlob],
+        params.presigned.thumbnailUpload.sanitizedFileName,
+        { type: params.presigned.thumbnailUpload.contentType },
+      );
+      try {
+        await putWithProgress({
+          url: params.presigned.thumbnailUpload.uploadUrl,
+          file: thumbFile,
+          contentType: params.presigned.thumbnailUpload.contentType,
+          onProgress: () => {
+            /* thumbnail is small enough that progress isn't useful */
+          },
+        });
+      } catch (thumbUploadError) {
+        // If the thumbnail upload fails, don't fail the whole submission —
+        // the PDF is what matters. The next replace can retry the thumbnail.
+        console.warn(
+          "[upload] thumbnail PUT failed; proceeding without thumbnail:",
+          thumbUploadError,
+        );
+        thumbnailBlob = null;
+      }
+    };
+
+    try {
+      await Promise.all([uploadPdf(), uploadThumbnail()]);
+    } catch (retryError) {
+      throw new Error(
+        retryError instanceof Error
+          ? `Upload interrupted: ${retryError.message}. Check your connection and try again.`
+          : "Upload interrupted. Check your connection and try again.",
+      );
     }
 
     setUploadPhase({
@@ -276,6 +333,15 @@ export function SubmissionEditor({
           fileExtension: params.presigned.fileExtension,
           fileMimeType: params.presigned.fileMimeType,
           originalFileName: params.presigned.originalFileName,
+          thumbnail:
+            thumbnailBlob && params.presigned.thumbnailUpload
+              ? {
+                  publicUrl: params.presigned.thumbnailUpload.publicUrl,
+                  storageKey: params.presigned.thumbnailUpload.storageKey,
+                  sanitizedFileName:
+                    params.presigned.thumbnailUpload.sanitizedFileName,
+                }
+              : null,
         }),
       },
     );

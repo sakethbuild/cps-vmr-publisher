@@ -51,6 +51,9 @@ export async function POST(request: Request, { params }: PresignRouteProps) {
       fileMimeType: presigned.fileMimeType,
       expiresInSeconds: presigned.expiresInSeconds,
       originalFileName: body.originalFileName,
+      // Sibling thumbnail presign — client renders first page to PNG and
+      // uploads in parallel with the PDF. Server does not render.
+      thumbnailUpload: presigned.thumbnailUpload,
     });
   } catch (error) {
     return NextResponse.json(
