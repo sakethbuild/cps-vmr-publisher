@@ -139,39 +139,54 @@ export function SubmissionPublicView({
 }) {
   const noteParagraphs = renderNoteParagraphs(notes);
 
+  const hasPreview = Boolean(thumbnailUrl || pdfUrl);
+
   return (
     <article className={cn("space-y-5", className)}>
-      {thumbnailUrl ? (
-        <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
-      ) : pdfUrl ? (
-        <ThumbnailPlaceholder title={title} />
-      ) : null}
-
-      <header>
-        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary sm:text-[28px]">
-          {title}
-        </h1>
-        {sessionDateLabel && (
-          <p className="mt-2 text-sm text-text-muted">{sessionDateLabel}</p>
+      <div
+        className={cn(
+          hasPreview &&
+            "lg:grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start lg:gap-8",
         )}
-      </header>
+      >
+        {hasPreview && (
+          <div className="lg:sticky lg:top-6">
+            {thumbnailUrl ? (
+              <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
+            ) : (
+              <ThumbnailPlaceholder title={title} />
+            )}
+          </div>
+        )}
 
-      {pdfUrl && (
-        <div className="flex flex-wrap items-center gap-3">
-          <DownloadPdfButton href={pdfUrl} fileName={originalFileName} />
-          <p className="text-xs text-text-muted">
-            Open the full slide deck (PDF).
-          </p>
+        <div className={cn("space-y-5", hasPreview && "mt-5 lg:mt-0")}>
+          <header>
+            <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary sm:text-[28px]">
+              {title}
+            </h1>
+            {sessionDateLabel && (
+              <p className="mt-2 text-sm text-text-muted">{sessionDateLabel}</p>
+            )}
+          </header>
+
+          {pdfUrl && (
+            <div className="flex flex-wrap items-center gap-3">
+              <DownloadPdfButton href={pdfUrl} fileName={originalFileName} />
+              <p className="text-xs text-text-muted">
+                Open the full slide deck (PDF).
+              </p>
+            </div>
+          )}
+
+          {chiefComplaint?.trim() && (
+            <DetailSection title="Chief Concern">
+              <p className="text-[15px] font-semibold text-text-primary">
+                {chiefComplaint.trim()}
+              </p>
+            </DetailSection>
+          )}
         </div>
-      )}
-
-      {chiefComplaint?.trim() && (
-        <DetailSection title="Chief Concern">
-          <p className="text-[15px] font-semibold text-text-primary">
-            {chiefComplaint.trim()}
-          </p>
-        </DetailSection>
-      )}
+      </div>
 
       {(presenters.length > 0 || discussants.length > 0) &&
         (isStandardPreview(templateType) || templateType === "sunday_fundamentals") && (
