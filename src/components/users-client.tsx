@@ -137,8 +137,8 @@ export function UsersClient({ initialUsers }: { initialUsers: UserListItem[] }) 
       <Card>
         <h2 className="text-sm font-semibold text-text-primary">Add user</h2>
         <p className="mt-1 text-xs text-text-muted">
-          The user signs in with this email and the password you set. They can change the
-          password later from their account page.
+          The user signs in with this email and the password you set. Only super admins
+          can change it later — useful when the whole academy shares one login.
         </p>
         <form className="mt-4 grid gap-3 md:grid-cols-[2fr_1.5fr_1fr_auto]" onSubmit={createUser}>
           <Input
