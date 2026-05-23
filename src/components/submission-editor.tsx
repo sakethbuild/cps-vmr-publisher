@@ -700,7 +700,7 @@ export function SubmissionEditor({
         </Card>
 
         <Card>
-          <SectionLabel>Image upload</SectionLabel>
+          <SectionLabel>PDF upload</SectionLabel>
           {uploadPhase.kind === "uploading" || uploadPhase.kind === "preparing" || uploadPhase.kind === "confirming" ? (
             <div className="rounded-lg border border-border-default bg-surface-tertiary p-4">
               <div className="flex items-center justify-between gap-3">
