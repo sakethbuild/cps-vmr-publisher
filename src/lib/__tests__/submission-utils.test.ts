@@ -42,7 +42,7 @@ describe("submission utilities", () => {
         sessionDate,
         subspecialty: "Cardiology",
       }),
-    ).toBe("Raphael Medina Subspecialty VMR - Cardiology - March 14, 2026");
+    ).toBe("Rafael Medina Subspecialty VMR - Cardiology - March 14, 2026");
 
     expect(
       generateSubmissionTitle({

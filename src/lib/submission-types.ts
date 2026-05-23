@@ -33,7 +33,7 @@ export const submissionSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Subspecialty is required for Raphael Medina submissions.",
+        message: "Subspecialty is required for Rafael Medina submissions.",
         path: ["subspecialty"],
       });
     }

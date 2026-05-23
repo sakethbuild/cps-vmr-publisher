@@ -20,7 +20,7 @@ export function generateSubmissionTitle(input: {
       return withChiefConcern(`Virtual Morning Report - ${formattedDate}`);
     case "raphael_medina_subspecialty":
       return withChiefConcern(
-        `Raphael Medina Subspecialty VMR - ${input.subspecialty?.trim() ?? ""} - ${formattedDate}`,
+        `Rafael Medina Subspecialty VMR - ${input.subspecialty?.trim() ?? ""} - ${formattedDate}`,
       );
     case "img_vmr":
       return withChiefConcern(
