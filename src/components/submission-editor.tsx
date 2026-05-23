@@ -159,6 +159,11 @@ export function SubmissionEditor({
   userRole?: "member" | "super_admin" | null;
 }) {
   const isSuperAdmin = userRole === "super_admin";
+  // Members can edit unpublished submissions, but a published VMR is locked
+  // down to super admins only. Use this everywhere the UI exposes a control
+  // that would mutate state — file inputs, replace button, YouTube save,
+  // etc. — so members don't see clickable controls that the backend will
+  // reject (the backend gates the same routes).
   const router = useRouter();
   const [state, setState] = useState(initialState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -198,6 +203,7 @@ export function SubmissionEditor({
     : null;
   const currentStatus = state.currentStatus ?? "submitted";
   const isPublished = currentStatus === "published";
+  const canEditFiles = !isPublished || isSuperAdmin;
   const isUploadBusy =
     uploadPhase.kind === "preparing" ||
     uploadPhase.kind === "uploading" ||
@@ -783,7 +789,20 @@ export function SubmissionEditor({
 
         <Card>
           <SectionLabel>PDF upload</SectionLabel>
-          {uploadPhase.kind === "uploading" || uploadPhase.kind === "preparing" || uploadPhase.kind === "confirming" ? (
+          {!canEditFiles ? (
+            <div className="rounded-lg border border-border-default bg-surface-tertiary p-4 text-sm text-text-muted">
+              {state.existingFileName ? (
+                <>
+                  Current file: <span className="font-medium text-text-primary">{state.existingFileName}</span>
+                  <p className="mt-2 text-xs">
+                    This VMR is published. Only a super admin can replace its PDF.
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs">No PDF uploaded yet.</p>
+              )}
+            </div>
+          ) : uploadPhase.kind === "uploading" || uploadPhase.kind === "preparing" || uploadPhase.kind === "confirming" ? (
             <div className="rounded-lg border border-border-default bg-surface-tertiary p-4">
               <div className="flex items-center justify-between gap-3">
                 <span className="truncate text-sm font-medium text-text-primary">
@@ -985,7 +1004,7 @@ export function SubmissionEditor({
 
       {mode === "edit" && (
         <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-          {submissionId && (
+          {submissionId && canEditFiles && (
             <Card>
               <SectionLabel>Replace PDF</SectionLabel>
               <Button
@@ -1014,7 +1033,7 @@ export function SubmissionEditor({
             </Card>
           )}
 
-          {submissionId && (
+          {submissionId && canEditFiles && (
             <Card>
               <SectionLabel>YouTube URL</SectionLabel>
               <Input
