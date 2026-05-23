@@ -207,7 +207,7 @@ export function UsersClient({ initialUsers }: { initialUsers: UserListItem[] }) 
                   </Select>
                 </td>
                 <td className="px-4 py-3 text-xs text-text-muted">
-                  {formatDisplayDate(user.createdAt)}
+                  {formatDisplayDate(new Date(user.createdAt))}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap items-center justify-end gap-2">
