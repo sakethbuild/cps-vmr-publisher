@@ -167,7 +167,7 @@ export function SubmissionPublicView({
 
       {chiefComplaint?.trim() && (
         <DetailSection title="Chief Concern">
-          <p className="text-[15px] font-medium text-status-warning">
+          <p className="text-[15px] font-semibold text-text-primary">
             {chiefComplaint.trim()}
           </p>
         </DetailSection>
