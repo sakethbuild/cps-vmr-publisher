@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import type { SubmissionStatus, TemplateType } from "@prisma/client";
 
@@ -160,6 +160,12 @@ export function SubmissionEditor({
     tone: "success" | "error";
     message: string;
   } | null>(null);
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (feedback?.tone === "error") {
+      feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [feedback]);
   const [isPending, startTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [isYoutubePending, startYoutubeTransition] = useTransition();
@@ -566,7 +572,8 @@ export function SubmissionEditor({
       <form className="space-y-5" onSubmit={submitForm}>
         {feedback && (
           <div
-            role="status"
+            ref={feedbackRef}
+            role={feedback.tone === "error" ? "alert" : "status"}
             className={cn(
               "rounded-lg border px-4 py-3 text-sm",
               feedback.tone === "success"
