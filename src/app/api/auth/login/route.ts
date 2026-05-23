@@ -8,8 +8,20 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  // Body parsing is a *client* failure mode (malformed JSON, missing body) —
+  // treat it as 400, not 500. Mapping client errors to 500 noises up monitoring
+  // and makes real server failures harder to find.
+  let body: { email?: string; password?: string };
   try {
-    const body = (await request.json()) as { email?: string; password?: string };
+    body = (await request.json()) as { email?: string; password?: string };
+  } catch {
+    return NextResponse.json(
+      { error: "Request body must be JSON with email and password fields." },
+      { status: 400 },
+    );
+  }
+
+  try {
     const email = body.email?.trim().toLowerCase();
     const password = body.password ?? "";
 
