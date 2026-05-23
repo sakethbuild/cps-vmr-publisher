@@ -45,8 +45,15 @@ export default async function PublicSubmissionPage({
 
   if (!submission) notFound();
 
-  const pdfUrl = submission.storagePath ?? null;
-  const thumbnailUrl = submission.thumbnailPath ?? null;
+  // R2 paths are stable across replaces (filename = title + date), so without
+  // cache-busting the browser can serve a stale thumbnail or PDF after a
+  // super admin overwrites the file. Append uploadConfirmedAt timestamp so
+  // each replace produces a unique URL.
+  const cacheBust = submission.uploadConfirmedAt?.getTime() ?? "";
+  const withCacheBust = (path: string | null) =>
+    path ? (cacheBust ? `${path}?v=${cacheBust}` : path) : null;
+  const pdfUrl = withCacheBust(submission.storagePath);
+  const thumbnailUrl = withCacheBust(submission.thumbnailPath);
   const presenters = buildLinkedPeople(
     submission.people
       .filter((p) => p.role === "presenter")

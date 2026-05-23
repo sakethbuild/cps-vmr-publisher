@@ -30,8 +30,15 @@ export default async function SubmissionDetailPage({
     notFound();
   }
 
-  const pdfUrl = submission.storagePath ?? null;
-  const thumbnailUrl = submission.thumbnailPath ?? null;
+  // R2 paths are stable (derived from submission title + date), so when a
+  // Replace PDF overwrites the file at the same URL, the browser would serve
+  // the cached old image. Append uploadConfirmedAt as a query string so each
+  // replace gets a fresh URL and busts the browser cache.
+  const cacheBust = submission.uploadConfirmedAt?.getTime() ?? "";
+  const withCacheBust = (path: string | null) =>
+    path ? (cacheBust ? `${path}?v=${cacheBust}` : path) : null;
+  const pdfUrl = withCacheBust(submission.storagePath);
+  const thumbnailUrl = withCacheBust(submission.thumbnailPath);
   const role = user.role;
 
   return (

@@ -167,6 +167,14 @@ export function SubmissionEditor({
       feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [feedback]);
+  // After a successful Replace PDF, the server re-renders this page with a
+  // fresh initialState. useState only takes initialState on mount, so the
+  // "Current file" label would otherwise stay stale. Sync the server-derived
+  // existingFileName whenever it changes (does not stomp on user edits to
+  // other fields).
+  useEffect(() => {
+    setState((prev) => ({ ...prev, existingFileName: initialState.existingFileName }));
+  }, [initialState.existingFileName]);
   const [isPending, startTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [isYoutubePending, startYoutubeTransition] = useTransition();
