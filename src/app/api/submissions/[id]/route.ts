@@ -32,13 +32,30 @@ export async function DELETE(_request: Request, { params }: SubmissionRouteProps
       return NextResponse.json({ error: "Submission not found." }, { status: 404 });
     }
 
-    if (submission.storagePath) {
+    // Clean up both the canonical PDF and the auto-generated thumbnail from R2.
+    // Each delete is best-effort: a single storage hiccup must not block the DB row
+    // from going away (the orphan-sweep cron will reap any leftovers).
+    const pathsToCleanup = [submission.storagePath, submission.thumbnailPath].filter(
+      (path): path is string => Boolean(path),
+    );
+    if (pathsToCleanup.length > 0) {
       try {
         const storage = getStorageService();
-        await storage.deleteFile(submission.storagePath);
+        await Promise.all(
+          pathsToCleanup.map(async (path) => {
+            try {
+              await storage.deleteFile(path);
+            } catch (perFileError) {
+              console.warn(
+                `[delete] failed to delete ${path} for submission ${id}:`,
+                perFileError instanceof Error ? perFileError.message : perFileError,
+              );
+            }
+          }),
+        );
       } catch (storageError) {
         console.warn(
-          `[delete] storage cleanup failed for submission ${id}; deleting DB row anyway:`,
+          `[delete] storage service unavailable for submission ${id}; deleting DB row anyway:`,
           storageError instanceof Error ? storageError.message : storageError,
         );
       }
