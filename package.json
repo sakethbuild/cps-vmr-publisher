@@ -35,6 +35,9 @@
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
   },
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-x64-gnu": "^0.1.96"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
