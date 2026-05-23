@@ -24,9 +24,7 @@ export const submissionSchema = z
     presenters: z
       .array(personSchema)
       .min(1, "At least one presenter is required."),
-    discussants: z
-      .array(personSchema)
-      .min(1, "At least one discussant is required."),
+    discussants: z.array(personSchema),
   })
   .superRefine((value, ctx) => {
     if (
