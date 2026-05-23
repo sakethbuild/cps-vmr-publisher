@@ -75,6 +75,16 @@ export const TEMPLATE_UPLOAD_RULES: Record<
   },
 };
 
+// NOTE on the "raphael" vs "Rafael" mismatch below:
+// The presenter's actual name is "Rafael Medina" (one 'a', no 'ph'), so
+// every user-visible string uses "Rafael". The internal schema key is
+// `raphael_medina_subspecialty` — a typo from the original schema that
+// already shipped to production. The key is opaque (never rendered to
+// users; only used in DB enums, TypeScript switches, and zod). Renaming
+// it would require a destructive Turso migration with no user benefit,
+// so we leave the key and keep all labels/titles/error messages on the
+// correct "Rafael" spelling. Same applies to templates.ts:23 and
+// submission-types.ts:36.
 export const TEMPLATE_TYPE_LABELS: Record<string, string> = {
   standard: "Standard",
   raphael_medina_subspecialty: "Rafael Medina Subspecialty",
