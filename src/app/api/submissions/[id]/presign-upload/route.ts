@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireInternalAccess } from "@/lib/auth";
+import { requireInternalAccess, requireSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPresignedUploadForSubmission } from "@/lib/upload-orchestration";
 
@@ -16,7 +16,12 @@ type PresignBody = {
 };
 
 export async function POST(request: Request, { params }: PresignRouteProps) {
-  await requireInternalAccess();
+  // Defense in depth — middleware also gates by session cookie, but a
+  // discarded boolean here used to make this route appear secure when it
+  // was actually relying entirely on middleware. Now it actually returns 401.
+  if (!(await requireInternalAccess())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
@@ -32,6 +37,17 @@ export async function POST(request: Request, { params }: PresignRouteProps) {
     const submission = await prisma.submission.findUnique({ where: { id } });
     if (!submission) {
       return NextResponse.json({ error: "Submission not found." }, { status: 404 });
+    }
+
+    // Replace on a published submission is super-admin only. The front-end
+    // already disables the controls, but a member could otherwise craft this
+    // request directly and overwrite a live PDF. Match the publish/unpublish
+    // routes' role gate.
+    if (submission.status === "published" && !(await requireSuperAdmin())) {
+      return NextResponse.json(
+        { error: "Only super admins can replace a published VMR's PDF." },
+        { status: 403 },
+      );
     }
 
     const presigned = await createPresignedUploadForSubmission({

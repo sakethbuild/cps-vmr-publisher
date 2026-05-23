@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireInternalAccess } from "@/lib/auth";
+import { requireInternalAccess, requireSuperAdmin } from "@/lib/auth";
 import { determineStatusForExistingSubmission } from "@/lib/submission";
 import { prisma } from "@/lib/prisma";
 
@@ -13,7 +13,9 @@ type UpdateYoutubeRouteProps = {
 };
 
 export async function POST(request: Request, { params }: UpdateYoutubeRouteProps) {
-  await requireInternalAccess();
+  if (!(await requireInternalAccess())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
@@ -23,6 +25,15 @@ export async function POST(request: Request, { params }: UpdateYoutubeRouteProps
 
     if (!submission) {
       return NextResponse.json({ error: "Submission not found." }, { status: 404 });
+    }
+
+    // Editing a published submission's YouTube URL is super-admin only —
+    // matches the same rule the front-end disables Save changes with.
+    if (submission.status === "published" && !(await requireSuperAdmin())) {
+      return NextResponse.json(
+        { error: "Only super admins can edit a published VMR." },
+        { status: 403 },
+      );
     }
 
     const { youtubeUrl } = (await request.json()) as {

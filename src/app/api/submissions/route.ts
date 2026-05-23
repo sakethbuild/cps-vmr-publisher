@@ -15,7 +15,9 @@ import { createPresignedUploadForSubmission } from "@/lib/upload-orchestration";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  await requireInternalAccess();
+  if (!(await requireInternalAccess())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const formData = await request.formData();

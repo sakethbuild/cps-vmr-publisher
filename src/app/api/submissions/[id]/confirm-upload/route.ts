@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireInternalAccess } from "@/lib/auth";
+import { requireInternalAccess, requireSuperAdmin } from "@/lib/auth";
 import {
   MAX_UPLOAD_BYTES,
   THUMBNAIL_MIME_TYPE,
@@ -36,7 +36,9 @@ type ConfirmBody = {
 };
 
 export async function POST(request: Request, { params }: ConfirmRouteProps) {
-  await requireInternalAccess();
+  if (!(await requireInternalAccess())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const { id } = await params;
@@ -51,6 +53,16 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
     const submission = await prisma.submission.findUnique({ where: { id } });
     if (!submission) {
       return NextResponse.json({ error: "Submission not found." }, { status: 404 });
+    }
+
+    // Replace on a published submission is super-admin only. Mirrors the
+    // presign-upload gate so a malicious client can't sneak the confirm
+    // step through after some other path got it past presign.
+    if (submission.status === "published" && !(await requireSuperAdmin())) {
+      return NextResponse.json(
+        { error: "Only super admins can replace a published VMR's PDF." },
+        { status: 403 },
+      );
     }
 
     const storage = getStorageService();
