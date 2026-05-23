@@ -1,6 +1,5 @@
 import type { TemplateType } from "@prisma/client";
 
-import { ImageLightbox } from "@/components/image-lightbox";
 import { PeoplePreview } from "@/components/people-preview";
 import type { LinkedPerson } from "@/lib/preview";
 import { isStandardPreview } from "@/lib/preview";
@@ -40,7 +39,8 @@ function YouTubeEmbed({ url, title }: { url: string; title: string }) {
 function ThumbnailHero({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="aspect-video w-full overflow-hidden rounded-[10px] border border-border-default bg-white">
-      <ImageLightbox src={src} alt={alt} className="block h-full w-full" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className="block h-full w-full object-cover" />
     </div>
   );
 }
