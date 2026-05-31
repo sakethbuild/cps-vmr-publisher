@@ -112,7 +112,9 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
         folder,
         contentType: THUMBNAIL_MIME_TYPE,
       });
-      thumbnailPath = saved.publicUrl;
+      // For R2, StoredFile.absolutePath IS the public URL (see
+      // r2-storage-service.saveFile). There is no `publicUrl` field.
+      thumbnailPath = saved.absolutePath;
     } catch (thumbnailError) {
       console.warn(
         `[confirm-upload] server thumbnail render failed for ${id}; proceeding without preview:`,
