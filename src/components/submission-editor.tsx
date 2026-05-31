@@ -226,90 +226,39 @@ export function SubmissionEditor({
       loaded: 0,
     });
 
-    // Render the first-page thumbnail in the browser BEFORE uploading.
-    // Best-effort: if rendering fails (corrupt PDF, very large, etc.) we
-    // proceed without a thumbnail rather than blocking the whole upload.
-    let thumbnailBlob: Blob | null = null;
+    // Upload ONLY the PDF to R2 via the presigned URL. The preview thumbnail
+    // is generated server-side at confirm-upload (from this same PDF, via
+    // mupdf), so the client never renders or uploads a thumbnail. This is the
+    // fix for the silent client-render failures that left most uploads with
+    // no preview.
+    const putPdf = (onProgress: (loaded: number) => void) =>
+      putWithProgress({
+        url: params.presigned.uploadUrl,
+        file: params.file,
+        contentType: params.presigned.fileMimeType,
+        onProgress,
+      });
+    const reportProgress = (loaded: number) =>
+      setUploadPhase({
+        kind: "uploading",
+        fileName: params.file.name,
+        size: params.file.size,
+        loaded,
+      });
+
     try {
-      const { renderPdfFirstPageToPngBlob } = await import(
-        "@/lib/client-pdf-render"
-      );
-      thumbnailBlob = await renderPdfFirstPageToPngBlob(params.file);
-    } catch (thumbError) {
-      console.warn(
-        "[upload] thumbnail rendering failed; proceeding without thumbnail:",
-        thumbError,
-      );
-    }
-
-    const uploadPdf = async () => {
+      await putPdf(reportProgress);
+    } catch {
+      // One retry on transient network failure.
       try {
-        await putWithProgress({
-          url: params.presigned.uploadUrl,
-          file: params.file,
-          contentType: params.presigned.fileMimeType,
-          onProgress: (loaded) => {
-            setUploadPhase({
-              kind: "uploading",
-              fileName: params.file.name,
-              size: params.file.size,
-              loaded,
-            });
-          },
-        });
-      } catch {
-        // One retry on transient network failure.
-        await putWithProgress({
-          url: params.presigned.uploadUrl,
-          file: params.file,
-          contentType: params.presigned.fileMimeType,
-          onProgress: (loaded) => {
-            setUploadPhase({
-              kind: "uploading",
-              fileName: params.file.name,
-              size: params.file.size,
-              loaded,
-            });
-          },
-        });
-      }
-    };
-
-    const uploadThumbnail = async () => {
-      if (!thumbnailBlob || !params.presigned.thumbnailUpload) return;
-      const thumbFile = new File(
-        [thumbnailBlob],
-        params.presigned.thumbnailUpload.sanitizedFileName,
-        { type: params.presigned.thumbnailUpload.contentType },
-      );
-      try {
-        await putWithProgress({
-          url: params.presigned.thumbnailUpload.uploadUrl,
-          file: thumbFile,
-          contentType: params.presigned.thumbnailUpload.contentType,
-          onProgress: () => {
-            /* thumbnail is small enough that progress isn't useful */
-          },
-        });
-      } catch (thumbUploadError) {
-        // If the thumbnail upload fails, don't fail the whole submission —
-        // the PDF is what matters. The next replace can retry the thumbnail.
-        console.warn(
-          "[upload] thumbnail PUT failed; proceeding without thumbnail:",
-          thumbUploadError,
+        await putPdf(reportProgress);
+      } catch (retryError) {
+        throw new Error(
+          retryError instanceof Error
+            ? `Upload interrupted: ${retryError.message}. Check your connection and try again.`
+            : "Upload interrupted. Check your connection and try again.",
         );
-        thumbnailBlob = null;
       }
-    };
-
-    try {
-      await Promise.all([uploadPdf(), uploadThumbnail()]);
-    } catch (retryError) {
-      throw new Error(
-        retryError instanceof Error
-          ? `Upload interrupted: ${retryError.message}. Check your connection and try again.`
-          : "Upload interrupted. Check your connection and try again.",
-      );
     }
 
     setUploadPhase({
