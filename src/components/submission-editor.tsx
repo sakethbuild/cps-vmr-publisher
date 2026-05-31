@@ -105,15 +105,6 @@ type PresignedUpload = {
   fileMimeType: string;
   originalFileName: string;
   expiresInSeconds: number;
-  // Sibling thumbnail presign — the client renders the first PDF page to PNG
-  // and uploads to this URL in parallel with the PDF. Server never renders.
-  thumbnailUpload?: {
-    uploadUrl: string;
-    publicUrl: string;
-    storageKey: string;
-    sanitizedFileName: string;
-    contentType: string;
-  };
 };
 
 async function putWithProgress(params: {
@@ -339,15 +330,6 @@ export function SubmissionEditor({
           fileExtension: params.presigned.fileExtension,
           fileMimeType: params.presigned.fileMimeType,
           originalFileName: params.presigned.originalFileName,
-          thumbnail:
-            thumbnailBlob && params.presigned.thumbnailUpload
-              ? {
-                  publicUrl: params.presigned.thumbnailUpload.publicUrl,
-                  storageKey: params.presigned.thumbnailUpload.storageKey,
-                  sanitizedFileName:
-                    params.presigned.thumbnailUpload.sanitizedFileName,
-                }
-              : null,
         }),
       },
     );
