@@ -4,7 +4,6 @@ import Link from "next/link";
 import { formatDisplayDate } from "@/lib/dates";
 import { TEMPLATE_TYPE_LABELS } from "@/lib/constants";
 import { buildSubmissionPublicPath } from "@/lib/public-pages";
-import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
 type VmrCardSubmission = {
   id: string;
@@ -26,11 +25,11 @@ const TEMPLATE_GRADIENTS: Record<string, string> = {
 };
 
 function resolveThumbnail(submission: VmrCardSubmission): string | null {
-  // YouTube thumbnail takes priority when present (matches SearchCPS pattern).
-  if (submission.youtubeUrl) {
-    return getYouTubeThumbnailUrl(submission.youtubeUrl);
-  }
-  // Otherwise fall back to the auto-generated PDF preview thumbnail.
+  // Always show the auto-generated PDF whiteboard preview on archive cards.
+  // It gives a consistent grid where every card shows the actual case content
+  // (the slide is what's unique per VMR). The YouTube recording still lives on
+  // the public detail page; we just don't use it as the card image — a video
+  // still is usually a presenter's face that looks the same across cards.
   return submission.thumbnailPath;
 }
 
