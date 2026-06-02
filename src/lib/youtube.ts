@@ -16,9 +16,3 @@ export function extractYouTubeId(url: string): string | null {
     return null;
   }
 }
-
-export function getYouTubeThumbnailUrl(youtubeUrl: string): string | null {
-  const id = extractYouTubeId(youtubeUrl);
-  if (!id) return null;
-  return `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
-}
