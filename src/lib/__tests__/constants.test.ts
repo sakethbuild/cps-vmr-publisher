@@ -24,10 +24,13 @@ describe("TEMPLATE_UPLOAD_RULES — PDF only", () => {
     }
   });
 
-  it("marks custom as not required and all others as required", () => {
+  it("makes the PDF optional for custom + academy_session, required for the rest", () => {
+    // custom and academy_session don't always have a slide deck.
+    const uploadOptional = new Set(["custom", "academy_session"]);
     expect(TEMPLATE_UPLOAD_RULES.custom.required).toBe(false);
+    expect(TEMPLATE_UPLOAD_RULES.academy_session.required).toBe(false);
     for (const template of TEMPLATE_TYPE_OPTIONS) {
-      if (template === "custom") continue;
+      if (uploadOptional.has(template)) continue;
       expect(TEMPLATE_UPLOAD_RULES[template].required).toBe(true);
     }
   });

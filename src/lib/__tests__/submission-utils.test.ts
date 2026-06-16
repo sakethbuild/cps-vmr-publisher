@@ -61,11 +61,75 @@ describe("submission utilities", () => {
 
     expect(
       generateSubmissionTitle({
+        templateType: "simplicity_in_complexity_vmr",
+        sessionDate,
+      }),
+    ).toBe("Simplicity in Complexity VMR - March 14, 2026");
+
+    expect(
+      generateSubmissionTitle({
+        templateType: "academy_session",
+        sessionDate,
+        chiefComplaint: "Antibiotic stewardship",
+      }),
+    ).toBe("Academy Session - March 14, 2026 - Antibiotic stewardship");
+
+    expect(
+      generateSubmissionTitle({
+        templateType: "mainstream_mondays",
+        sessionDate,
+      }),
+    ).toBe("Mainstream Mondays VMR - March 14, 2026");
+
+    expect(
+      generateSubmissionTitle({
         templateType: "custom",
         sessionDate,
         customTitle: "Exact Custom Title",
       }),
     ).toBe("Exact Custom Title");
+  });
+
+  it("academy_session can reach ready_to_publish without a PDF (upload optional)", () => {
+    // Has session date + YouTube, no upload → still ready (PDF optional for academy).
+    expect(
+      calculateSubmissionStatus({
+        templateType: "academy_session",
+        sessionDate: "2026-03-14",
+        hasUpload: false,
+        youtubeUrl: "https://youtube.com/watch?v=x",
+      }),
+    ).toBe("ready_to_publish");
+
+    // But it still needs the YouTube URL like other standard-style templates.
+    expect(
+      calculateSubmissionStatus({
+        templateType: "academy_session",
+        sessionDate: "2026-03-14",
+        hasUpload: false,
+        youtubeUrl: "",
+      }),
+    ).toBe("awaiting_youtube");
+  });
+
+  it("simplicity_in_complexity + mainstream_mondays require a PDF", () => {
+    expect(
+      calculateSubmissionStatus({
+        templateType: "simplicity_in_complexity_vmr",
+        sessionDate: "2026-03-14",
+        hasUpload: false,
+        youtubeUrl: "https://youtube.com/watch?v=x",
+      }),
+    ).toBe("awaiting_upload");
+
+    expect(
+      calculateSubmissionStatus({
+        templateType: "mainstream_mondays",
+        sessionDate: "2026-03-14",
+        hasUpload: true,
+        youtubeUrl: "https://youtube.com/watch?v=x",
+      }),
+    ).toBe("ready_to_publish");
   });
 
   it("normalizes X, Instagram, and custom links", () => {

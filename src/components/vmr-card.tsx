@@ -21,6 +21,9 @@ const TEMPLATE_GRADIENTS: Record<string, string> = {
   raphael_medina_subspecialty: "from-status-published/25 to-status-published/5",
   img_vmr: "from-status-warning/25 to-status-warning/5",
   sunday_fundamentals: "from-status-success/25 to-status-success/5",
+  simplicity_in_complexity_vmr: "from-accent/20 to-accent/5",
+  academy_session: "from-status-warning/25 to-status-warning/5",
+  mainstream_mondays: "from-status-published/25 to-status-published/5",
   custom: "from-surface-tertiary to-surface-secondary",
 };
 

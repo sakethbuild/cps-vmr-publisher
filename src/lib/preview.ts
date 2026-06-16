@@ -80,6 +80,9 @@ export function isStandardPreview(templateType: TemplateType) {
     "standard",
     "raphael_medina_subspecialty",
     "img_vmr",
+    "simplicity_in_complexity_vmr",
+    "academy_session",
+    "mainstream_mondays",
   ].includes(templateType);
 }
 

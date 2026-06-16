@@ -3,6 +3,9 @@ export const TEMPLATE_TYPE_OPTIONS = [
   "raphael_medina_subspecialty",
   "img_vmr",
   "sunday_fundamentals",
+  "simplicity_in_complexity_vmr",
+  "academy_session",
+  "mainstream_mondays",
   "custom",
 ] as const;
 
@@ -68,6 +71,23 @@ export const TEMPLATE_UPLOAD_RULES: Record<
     label: "PDF only",
     required: true,
   },
+  simplicity_in_complexity_vmr: {
+    allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
+    label: "PDF only",
+    required: true,
+  },
+  // Academy Session: PDF is optional (per product — these don't always have a
+  // slide deck).
+  academy_session: {
+    allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
+    label: "Optional PDF",
+    required: false,
+  },
+  mainstream_mondays: {
+    allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
+    label: "PDF only",
+    required: true,
+  },
   custom: {
     allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
     label: "Optional PDF",
@@ -90,6 +110,9 @@ export const TEMPLATE_TYPE_LABELS: Record<string, string> = {
   raphael_medina_subspecialty: "Rafael Medina Subspecialty",
   img_vmr: "IMG VMR",
   sunday_fundamentals: "Sunday Fundamentals",
+  simplicity_in_complexity_vmr: "Simplicity in Complexity VMR",
+  academy_session: "Academy Session",
+  mainstream_mondays: "Mainstream Mondays VMR",
   custom: "Custom VMR",
 };
 

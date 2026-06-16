@@ -61,6 +61,12 @@ function templateBadgeVariant(
       return "warning";
     case "sunday_fundamentals":
       return "success";
+    case "simplicity_in_complexity_vmr":
+      return "accent";
+    case "academy_session":
+      return "warning";
+    case "mainstream_mondays":
+      return "success";
     case "custom":
       return "published";
     default:

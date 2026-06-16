@@ -1,9 +1,14 @@
 import type { SubmissionStatus, TemplateType } from "@prisma/client";
 
+import { TEMPLATE_UPLOAD_RULES } from "@/lib/constants";
+
 const YOUTUBE_REQUIRED_TYPES: TemplateType[] = [
   "standard",
   "raphael_medina_subspecialty",
   "img_vmr",
+  "simplicity_in_complexity_vmr",
+  "academy_session",
+  "mainstream_mondays",
 ];
 
 export function requiresYoutubeUrl(templateType: TemplateType): boolean {
@@ -30,12 +35,15 @@ export function hasRequiredSubmissionFields(params: {
     return Boolean(params.residencyProgram?.trim()) && Boolean(params.hasUpload);
   }
 
-  if (params.templateType === "sunday_fundamentals") {
-    return Boolean(params.hasUpload);
-  }
-
   if (params.templateType === "custom") {
     return Boolean(params.customTitle?.trim());
+  }
+
+  // Templates with an optional PDF (e.g. academy_session) only need a session
+  // date; everything else needs the upload too. Drive this off the upload
+  // rules so the two stay in sync.
+  if (!TEMPLATE_UPLOAD_RULES[params.templateType]?.required) {
+    return true;
   }
 
   return Boolean(params.hasUpload);
@@ -60,7 +68,9 @@ export function canBecomeReady(params: {
 }
 
 function requiresUpload(templateType: TemplateType): boolean {
-  return templateType !== "custom";
+  // Single source of truth: a template requires an upload iff its upload rule
+  // says so (custom + academy_session are optional).
+  return Boolean(TEMPLATE_UPLOAD_RULES[templateType]?.required);
 }
 
 export function calculateSubmissionStatus(params: {

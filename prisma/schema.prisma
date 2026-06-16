@@ -12,6 +12,9 @@ enum TemplateType {
   raphael_medina_subspecialty
   img_vmr
   sunday_fundamentals
+  simplicity_in_complexity_vmr
+  academy_session
+  mainstream_mondays
   custom
 }
 

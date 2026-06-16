@@ -28,6 +28,12 @@ export function generateSubmissionTitle(input: {
       );
     case "sunday_fundamentals":
       return withChiefConcern(`Sunday Fundamentals VMR - ${formattedDate}`);
+    case "simplicity_in_complexity_vmr":
+      return withChiefConcern(`Simplicity in Complexity VMR - ${formattedDate}`);
+    case "academy_session":
+      return withChiefConcern(`Academy Session - ${formattedDate}`);
+    case "mainstream_mondays":
+      return withChiefConcern(`Mainstream Mondays VMR - ${formattedDate}`);
     case "custom":
       return input.customTitle?.trim() ?? "";
   }
@@ -43,6 +49,12 @@ export function getTemplateBaseSlug(templateType: TemplateType): string {
       return "img-virtual-morning-report";
     case "sunday_fundamentals":
       return "sunday-fundamentals-vmr";
+    case "simplicity_in_complexity_vmr":
+      return "simplicity-in-complexity-vmr";
+    case "academy_session":
+      return "academy-session";
+    case "mainstream_mondays":
+      return "mainstream-mondays-vmr";
     case "custom":
       return "custom-vmr";
   }
