@@ -159,7 +159,6 @@ export function SubmissionEditor({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>({ kind: "idle" });
-  const [youtubeDraftValue, setYoutubeDraftValue] = useState(initialState.youtubeUrl ?? "");
   const [feedback, setFeedback] = useState<{
     tone: "success" | "error";
     message: string;
@@ -181,7 +180,6 @@ export function SubmissionEditor({
   }, [initialState.existingFileName]);
   const [isPending, startTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
-  const [isYoutubePending, startYoutubeTransition] = useTransition();
   const [isCopyPending, startCopyTransition] = useTransition();
 
   const presentersPreview = buildLinkedPeople(state.presenters);
@@ -297,6 +295,87 @@ export function SubmissionEditor({
     return confirmResult.status;
   }
 
+  // Persist the current form to the DB and return the new status. Throws on
+  // any failure (caller decides how to surface it). Used both by the normal
+  // "Save changes" / "Submit VMR" flow AND by Publish, so that a YouTube URL
+  // typed into the form is saved BEFORE publish recomputes status from the DB
+  // (the B1 fix — publish used to read a stale DB record).
+  async function persistForm(): Promise<{
+    id: string;
+    status: SubmissionStatus;
+  }> {
+    const formData = new FormData();
+    formData.append("templateType", state.templateType);
+    formData.append("subspecialty", state.subspecialty ?? "");
+    formData.append("residencyProgram", state.residencyProgram ?? "");
+    formData.append("customTitle", state.customTitle ?? "");
+    formData.append("sessionDate", state.sessionDate ?? "");
+    formData.append("chiefComplaint", state.chiefComplaint ?? "");
+    formData.append("youtubeUrl", state.youtubeUrl ?? "");
+    formData.append("notes", state.notes ?? "");
+    formData.append("presenters", JSON.stringify(state.presenters));
+    formData.append("discussants", JSON.stringify(state.discussants));
+
+    if (mode === "create" && selectedFile) {
+      formData.append("uploadFileName", selectedFile.name);
+      formData.append("uploadMimeType", selectedFile.type ?? "");
+      setUploadPhase({
+        kind: "preparing",
+        fileName: selectedFile.name,
+        size: selectedFile.size,
+      });
+    }
+
+    const endpoint =
+      mode === "create" ? "/api/submissions" : `/api/submissions/${state.id}`;
+    const method = mode === "create" ? "POST" : "PATCH";
+    const response = await fetch(endpoint, { method, body: formData });
+    const result = (await response.json()) as {
+      id?: string;
+      status?: SubmissionStatus;
+      message?: string;
+      error?: string;
+      presignedUpload?: PresignedUpload | null;
+    };
+
+    if (!response.ok) {
+      setUploadPhase({ kind: "idle" });
+      throw new Error(result.error ?? "Something went wrong while saving.");
+    }
+
+    let finalStatus = result.status ?? currentStatus;
+    const id = result.id ?? state.id ?? submissionId ?? "";
+
+    if (mode === "create" && selectedFile && result.id && result.presignedUpload) {
+      try {
+        const confirmedStatus = await uploadFileForSubmission({
+          file: selectedFile,
+          submissionId: result.id,
+          presigned: result.presignedUpload,
+        });
+        if (confirmedStatus) finalStatus = confirmedStatus;
+        setUploadPhase({ kind: "idle" });
+      } catch (uploadError) {
+        setUploadPhase({
+          kind: "error",
+          message:
+            uploadError instanceof Error
+              ? uploadError.message
+              : "Upload failed. Please try again.",
+        });
+        await fetch(`/api/submissions/${result.id}`, { method: "DELETE" }).catch(
+          () => {},
+        );
+        throw uploadError instanceof Error
+          ? uploadError
+          : new Error("Upload failed. Please try again.");
+      }
+    }
+
+    setState((c) => ({ ...c, currentStatus: finalStatus }));
+    return { id, status: finalStatus };
+  }
+
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFeedback(null);
@@ -312,88 +391,19 @@ export function SubmissionEditor({
     startTransition(() => {
       void (async () => {
         try {
-          const formData = new FormData();
-          formData.append("templateType", state.templateType);
-          formData.append("subspecialty", state.subspecialty ?? "");
-          formData.append("residencyProgram", state.residencyProgram ?? "");
-          formData.append("customTitle", state.customTitle ?? "");
-          formData.append("sessionDate", state.sessionDate ?? "");
-          formData.append("chiefComplaint", state.chiefComplaint ?? "");
-          formData.append("youtubeUrl", state.youtubeUrl ?? "");
-          formData.append("notes", state.notes ?? "");
-          formData.append("presenters", JSON.stringify(state.presenters));
-          formData.append("discussants", JSON.stringify(state.discussants));
+          const { id } = await persistForm();
 
-          if (mode === "create" && selectedFile) {
-            formData.append("uploadFileName", selectedFile.name);
-            formData.append("uploadMimeType", selectedFile.type ?? "");
-            setUploadPhase({
-              kind: "preparing",
-              fileName: selectedFile.name,
-              size: selectedFile.size,
-            });
-          }
-
-          const endpoint =
-            mode === "create" ? "/api/submissions" : `/api/submissions/${state.id}`;
-          const method = mode === "create" ? "POST" : "PATCH";
-          const response = await fetch(endpoint, { method, body: formData });
-          const result = (await response.json()) as {
-            id?: string;
-            status?: SubmissionStatus;
-            message?: string;
-            error?: string;
-            presignedUpload?: PresignedUpload | null;
-          };
-
-          if (!response.ok) {
-            setUploadPhase({ kind: "idle" });
-            setFeedback({
-              tone: "error",
-              message: result.error ?? "Something went wrong while saving.",
-            });
-            return;
-          }
-
-          let finalStatus = result.status ?? currentStatus;
-          if (mode === "create" && selectedFile && result.id && result.presignedUpload) {
-            try {
-              const confirmedStatus = await uploadFileForSubmission({
-                file: selectedFile,
-                submissionId: result.id,
-                presigned: result.presignedUpload,
-              });
-              if (confirmedStatus) finalStatus = confirmedStatus;
-              setUploadPhase({ kind: "idle" });
-            } catch (uploadError) {
-              setUploadPhase({
-                kind: "error",
-                message:
-                  uploadError instanceof Error
-                    ? uploadError.message
-                    : "Upload failed. Please try again.",
-              });
-              await fetch(`/api/submissions/${result.id}`, { method: "DELETE" }).catch(
-                () => {},
-              );
-              return;
-            }
-          }
-
-          setState((c) => ({ ...c, currentStatus: finalStatus }));
           setFeedback({
             tone: "success",
-            message:
-              result.message ?? (mode === "create" ? "Submission saved." : "Submission updated."),
+            message: mode === "create" ? "Submission saved." : "Submission updated.",
           });
 
-          if (mode === "create" && result.id) {
-            router.push(`/admin/submissions/${result.id}`);
+          if (mode === "create" && id) {
+            router.push(`/admin/submissions/${id}`);
             return;
           }
 
           setSelectedFile(null);
-          setYoutubeDraftValue(state.youtubeUrl ?? "");
           router.refresh();
         } catch (error) {
           setUploadPhase({ kind: "idle" });
@@ -402,6 +412,49 @@ export function SubmissionEditor({
             message: error instanceof Error ? error.message : "Unexpected error.",
           });
         }
+      })();
+    });
+  }
+
+  // B1: Publish saves the current form first (so a just-typed YouTube URL is in
+  // the DB), then calls the publish endpoint which recomputes status from the
+  // freshly-saved record. No more "click Save changes, then Publish" two-step.
+  async function saveAndPublish() {
+    if (!state.id) return;
+    setFeedback(null);
+    startActionTransition(() => {
+      void (async () => {
+        try {
+          await persistForm();
+        } catch (error) {
+          setFeedback({
+            tone: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Could not save before publishing.",
+          });
+          return;
+        }
+
+        const response = await fetch(`/api/submissions/${state.id}/publish`, {
+          method: "POST",
+        });
+        const result = (await response.json()) as {
+          error?: string;
+          message?: string;
+          status?: SubmissionStatus;
+        };
+        if (!response.ok) {
+          setFeedback({
+            tone: "error",
+            message: result.error ?? "Could not publish.",
+          });
+          return;
+        }
+        setState((c) => ({ ...c, currentStatus: result.status ?? c.currentStatus }));
+        setFeedback({ tone: "success", message: result.message ?? "Published." });
+        router.refresh();
       })();
     });
   }
@@ -478,37 +531,6 @@ export function SubmissionEditor({
     });
   }
 
-  async function updateYoutubeUrl() {
-    if (!submissionId) return;
-    setFeedback(null);
-    startYoutubeTransition(() => {
-      void (async () => {
-        const response = await fetch(`/api/submissions/${submissionId}/youtube`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ youtubeUrl: youtubeDraftValue }),
-        });
-        const result = (await response.json()) as {
-          error?: string;
-          message?: string;
-          status?: SubmissionStatus;
-          youtubeUrl?: string | null;
-        };
-        if (!response.ok) {
-          setFeedback({ tone: "error", message: result.error ?? "YouTube URL could not be updated." });
-          return;
-        }
-        setState((c) => ({
-          ...c,
-          youtubeUrl: result.youtubeUrl ?? "",
-          currentStatus: result.status ?? c.currentStatus,
-        }));
-        setYoutubeDraftValue(result.youtubeUrl ?? "");
-        setFeedback({ tone: "success", message: result.message ?? "YouTube URL updated." });
-        router.refresh();
-      })();
-    });
-  }
 
   async function copyPublicUrl() {
     if (!publicUrl) {
@@ -880,7 +902,7 @@ export function SubmissionEditor({
                   variant="secondary"
                   size="lg"
                   disabled={isActionPending}
-                  onClick={() => runAction(`/api/submissions/${state.id}/publish`, "Published.")}
+                  onClick={saveAndPublish}
                   className="border-status-success/30 text-status-success hover:bg-status-success-muted"
                 >
                   Publish
@@ -964,26 +986,9 @@ export function SubmissionEditor({
             </Card>
           )}
 
-          {submissionId && canEditFiles && (
-            <Card>
-              <SectionLabel>YouTube URL</SectionLabel>
-              <Input
-                type="url"
-                value={youtubeDraftValue}
-                onChange={(e) => setYoutubeDraftValue(e.target.value)}
-                placeholder="https://youtube.com/..."
-              />
-              <Button
-                type="button"
-                size="sm"
-                onClick={updateYoutubeUrl}
-                disabled={isYoutubePending}
-                className="mt-3 w-full"
-              >
-                {isYoutubePending ? "Updating..." : "Save YouTube URL"}
-              </Button>
-            </Card>
-          )}
+          {/* B1: the standalone "Save YouTube URL" box was removed. The YouTube
+              URL is edited in the main form field and persisted by Save changes /
+              Publish, so there's one place to manage it. */}
 
           {publicUrl && (
             <Card>
