@@ -71,6 +71,14 @@ function updatePerson(
   );
 }
 
+// B9: true if any person has a handle/URL typed but no platform selected, which
+// would otherwise be silently dropped on save. Used to block submit.
+function hasUnlinkedHandle(people: PersonInput[]): boolean {
+  return people.some(
+    (p) => Boolean(p.handleOrUrl?.trim()) && p.linkType === "none",
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="text-xs font-medium uppercase tracking-wider text-text-muted mb-4">
@@ -379,6 +387,15 @@ export function SubmissionEditor({
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFeedback(null);
+
+    if (hasUnlinkedHandle(state.presenters) || hasUnlinkedHandle(state.discussants)) {
+      setFeedback({
+        tone: "error",
+        message:
+          "A presenter or discussant has a handle with no platform selected. Pick a platform or clear the handle.",
+      });
+      return;
+    }
 
     if (selectedFile) {
       const localError = validateLocalFile(selectedFile);
@@ -1052,51 +1069,69 @@ function PeopleSection({
     <div>
       <SectionLabel>{title}</SectionLabel>
       <div className="space-y-3">
-        {people.map((person, index) => (
-          <div
-            key={`${title}-${index}`}
-            className="flex flex-wrap items-center gap-2 rounded-lg border border-border-default bg-surface-tertiary p-3 md:flex-nowrap"
-          >
-            <Input
-              value={person.fullName}
-              onChange={(e) => onChange(updatePerson(people, index, "fullName", e.target.value))}
-              placeholder="Full name"
-              className="flex-1 min-w-[140px]"
-            />
-            <Select
-              value={person.linkType}
-              onChange={(e) => onChange(updatePerson(people, index, "linkType", e.target.value))}
-              className="w-auto min-w-[140px]"
+        {people.map((person, index) => {
+          // B9: a handle/URL with no platform selected would be silently dropped
+          // (normalizePersonUrl returns null when linkType === "none"). Flag it.
+          const needsPlatform =
+            Boolean(person.handleOrUrl?.trim()) && person.linkType === "none";
+          return (
+            <div
+              key={`${title}-${index}`}
+              className="rounded-lg border border-border-default bg-surface-tertiary p-3"
             >
-              {PERSON_LINK_TYPE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>{PERSON_LINK_TYPE_LABELS[opt]}</option>
-              ))}
-            </Select>
-            <Input
-              value={person.handleOrUrl ?? ""}
-              onChange={(e) => onChange(updatePerson(people, index, "handleOrUrl", e.target.value))}
-              placeholder="@handle or URL"
-              className="flex-1 min-w-[140px]"
-            />
-            <button
-              type="button"
-              onClick={() =>
-                onChange(
-                  people.length === 1
-                    ? [emptyPerson()]
-                    : people.filter((_, i) => i !== index),
-                )
-              }
-              className="shrink-0 rounded-lg p-2 text-text-muted hover:bg-status-danger-muted hover:text-status-danger transition-colors"
-              aria-label="Remove"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-        ))}
+              <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
+                <Input
+                  value={person.fullName}
+                  onChange={(e) => onChange(updatePerson(people, index, "fullName", e.target.value))}
+                  placeholder="Full name"
+                  className="flex-1 min-w-[140px]"
+                />
+                <Select
+                  value={person.linkType}
+                  onChange={(e) => onChange(updatePerson(people, index, "linkType", e.target.value))}
+                  aria-invalid={needsPlatform}
+                  className={cn(
+                    "w-auto min-w-[140px]",
+                    needsPlatform && "border-status-danger ring-1 ring-status-danger/40",
+                  )}
+                >
+                  {PERSON_LINK_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{PERSON_LINK_TYPE_LABELS[opt]}</option>
+                  ))}
+                </Select>
+                <Input
+                  value={person.handleOrUrl ?? ""}
+                  onChange={(e) => onChange(updatePerson(people, index, "handleOrUrl", e.target.value))}
+                  placeholder="@handle or URL"
+                  className="flex-1 min-w-[140px]"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    onChange(
+                      people.length === 1
+                        ? [emptyPerson()]
+                        : people.filter((_, i) => i !== index),
+                    )
+                  }
+                  className="shrink-0 rounded-lg p-2 text-text-muted hover:bg-status-danger-muted hover:text-status-danger transition-colors"
+                  aria-label="Remove"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              {needsPlatform && (
+                <p className="mt-2 text-xs font-medium text-status-danger" role="alert">
+                  Pick a platform (X, Instagram, or Custom URL) to use this handle,
+                  or clear the handle.
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
       <Button
         type="button"

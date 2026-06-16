@@ -5,11 +5,24 @@ import {
   TEMPLATE_TYPE_OPTIONS,
 } from "@/lib/constants";
 
-export const personSchema = z.object({
-  fullName: z.string().trim().min(1, "Full name is required."),
-  linkType: z.enum(PERSON_LINK_TYPE_OPTIONS),
-  handleOrUrl: z.string().trim().optional(),
-});
+export const personSchema = z
+  .object({
+    fullName: z.string().trim().min(1, "Full name is required."),
+    linkType: z.enum(PERSON_LINK_TYPE_OPTIONS),
+    handleOrUrl: z.string().trim().optional(),
+  })
+  // B9 defense-in-depth: a handle/URL with linkType "none" gets silently
+  // dropped (normalizePersonUrl returns null). Reject it server-side so the
+  // client validation can't be bypassed.
+  .superRefine((person, ctx) => {
+    if (person.handleOrUrl && person.handleOrUrl.length > 0 && person.linkType === "none") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["linkType"],
+        message: "Select a platform to use this handle, or clear the handle.",
+      });
+    }
+  });
 
 export const submissionSchema = z
   .object({
