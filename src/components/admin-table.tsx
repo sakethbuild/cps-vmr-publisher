@@ -76,7 +76,9 @@ export function AdminTable({
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  // Default to newest SESSION date first (B3). Previously defaulted to createdAt,
+  // so a freshly-entered VMR for an older session jumped above newer sessions.
+  const [sortKey, setSortKey] = useState<SortKey>("sessionDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

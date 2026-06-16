@@ -7,7 +7,6 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { SubmissionStatus, TemplateType } from "@prisma/client";
 
 import { PeoplePreview } from "@/components/people-preview";
-import { StatusBadge } from "@/components/status-badge";
 import { SubmissionPublicView } from "@/components/submission-public-view";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -601,7 +600,8 @@ export function SubmissionEditor({
           <h2 className="text-lg font-bold text-text-primary">
             {mode === "create" ? "Submit a VMR" : "Edit submission"}
           </h2>
-          {mode === "edit" && <StatusBadge status={currentStatus} />}
+          {/* Status is shown once in the page breadcrumb (admin/submissions/[id]/page.tsx).
+              A second badge here produced the duplicate "published"/"ready" pills (B2). */}
         </div>
 
         <Card>
