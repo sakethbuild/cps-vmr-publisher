@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
-import { VmrCard } from "@/components/vmr-card";
+import { Suspense } from "react";
+
+import { VmrArchive, type ArchiveSubmission } from "@/components/vmr-archive";
 import { prisma } from "@/lib/prisma";
 
 export default async function PublicVmrArchivePage() {
@@ -11,6 +13,17 @@ export default async function PublicVmrArchivePage() {
     },
     orderBy: [{ sessionDate: "desc" }, { updatedAt: "desc" }],
   });
+
+  const archiveItems: ArchiveSubmission[] = submissions.map((submission) => ({
+    id: submission.id,
+    title: submission.title,
+    slug: submission.slug,
+    sessionDate: submission.sessionDate,
+    templateType: submission.templateType,
+    chiefComplaint: submission.chiefComplaint,
+    youtubeUrl: submission.youtubeUrl,
+    thumbnailPath: submission.thumbnailPath,
+  }));
 
   return (
     <div className="space-y-8">
@@ -23,22 +36,10 @@ export default async function PublicVmrArchivePage() {
         </p>
       </header>
 
-      {submissions.length ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {submissions.map((submission) => (
-            <VmrCard key={submission.id} submission={submission} />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-[10px] border border-dashed border-border-default bg-surface-secondary px-6 py-16 text-center">
-          <p className="text-sm font-medium text-text-primary">
-            No published VMRs yet.
-          </p>
-          <p className="mt-2 text-sm text-text-muted">
-            New cases will appear here once the team publishes them.
-          </p>
-        </div>
-      )}
+      {/* useSearchParams (inside VmrArchive) needs a Suspense boundary. */}
+      <Suspense fallback={null}>
+        <VmrArchive submissions={archiveItems} />
+      </Suspense>
     </div>
   );
 }
