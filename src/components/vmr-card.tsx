@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatDisplayDate } from "@/lib/dates";
 import { TEMPLATE_TYPE_LABELS } from "@/lib/constants";
 import { buildSubmissionPublicPath } from "@/lib/public-pages";
+import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
 type VmrCardSubmission = {
   id: string;
@@ -28,11 +29,12 @@ const TEMPLATE_GRADIENTS: Record<string, string> = {
 };
 
 function resolveThumbnail(submission: VmrCardSubmission): string | null {
-  // Always show the auto-generated PDF whiteboard preview on archive cards.
-  // It gives a consistent grid where every card shows the actual case content
-  // (the slide is what's unique per VMR). The YouTube recording still lives on
-  // the public detail page; we just don't use it as the card image — a video
-  // still is usually a presenter's face that looks the same across cards.
+  // F6: prefer the YouTube video still when there's a recording; fall back to
+  // the auto-generated PDF whiteboard when there's no video link.
+  if (submission.youtubeUrl?.trim()) {
+    const ytThumb = getYouTubeThumbnailUrl(submission.youtubeUrl);
+    if (ytThumb) return ytThumb;
+  }
   return submission.thumbnailPath;
 }
 
@@ -44,6 +46,10 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
     TEMPLATE_GRADIENTS[submission.templateType] ?? TEMPLATE_GRADIENTS.custom;
   const templateLabel =
     TEMPLATE_TYPE_LABELS[submission.templateType] ?? submission.templateType;
+  // F8: card title is the chief concern (the human-meaningful part), falling
+  // back to the VMR type label when there's no chief concern. The date shows
+  // once underneath — no more title-baked date + redundant chief-concern block.
+  const cardTitle = submission.chiefComplaint?.trim() || templateLabel;
 
   return (
     <Link
@@ -76,21 +82,11 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
 
       <div className="px-4 py-3.5">
         <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-text-primary transition-colors group-hover:text-accent">
-          {submission.title}
+          {cardTitle}
         </h2>
         <div className="mt-2 flex items-center gap-3 text-xs text-text-muted">
           <span>{formatDisplayDate(submission.sessionDate)}</span>
         </div>
-        {submission.chiefComplaint?.trim() && (
-          <div className="mt-2.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-              Chief Concern
-            </p>
-            <p className="mt-0.5 line-clamp-2 text-xs font-medium text-text-primary">
-              {submission.chiefComplaint.trim()}
-            </p>
-          </div>
-        )}
       </div>
     </Link>
   );

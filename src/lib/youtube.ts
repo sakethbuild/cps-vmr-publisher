@@ -16,3 +16,11 @@ export function extractYouTubeId(url: string): string | null {
     return null;
   }
 }
+
+// hqdefault is the most reliably-present still across all video ages/qualities
+// (mqdefault sometimes 404s for older uploads). Used for archive card previews.
+export function getYouTubeThumbnailUrl(youtubeUrl: string): string | null {
+  const id = extractYouTubeId(youtubeUrl);
+  if (!id) return null;
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
