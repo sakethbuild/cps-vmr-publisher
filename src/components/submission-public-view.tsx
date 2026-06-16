@@ -72,7 +72,7 @@ function DownloadPdfButton({ href, fileName }: { href: string; fileName?: string
         <polyline points="7 10 12 15 17 10" />
         <line x1="12" y1="15" x2="12" y2="3" />
       </svg>
-      Download PDF
+      Download slide deck (PDF)
     </a>
   );
 }
@@ -141,83 +141,80 @@ export function SubmissionPublicView({
   className?: string;
 }) {
   const noteParagraphs = renderNoteParagraphs(notes);
+  const showPeople =
+    (presenters.length > 0 || discussants.length > 0) &&
+    (isStandardPreview(templateType) || templateType === "sunday_fundamentals");
 
-  const hasPreview = Boolean(thumbnailUrl || pdfUrl);
-
+  // F7 reading order: title → hero media (the recording if there's one, else
+  // the whiteboard) → chief concern → presenters/discussants → download the
+  // slide deck → teaching notes. The video is the headline; the slide deck is
+  // a reference you grab lower down.
   return (
-    <article className={cn("@container space-y-5", className)}>
-      <div
-        className={cn(
-          hasPreview &&
-            "@[640px]:grid @[640px]:grid-cols-[minmax(0,420px)_minmax(0,1fr)] @[640px]:items-start @[640px]:gap-8",
+    <article className={cn("space-y-6", className)}>
+      <header>
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary sm:text-[28px]">
+          {title}
+        </h1>
+        {sessionDateLabel && (
+          <p className="mt-2 text-sm text-text-muted">{sessionDateLabel}</p>
         )}
-      >
-        {hasPreview && (
-          <div className="@[640px]:sticky @[640px]:top-6">
-            {thumbnailUrl ? (
-              <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
-            ) : (
-              <ThumbnailPlaceholder title={title} />
-            )}
-          </div>
-        )}
+      </header>
 
-        <div className={cn("space-y-5", hasPreview && "mt-5 @[640px]:mt-0")}>
-          <header>
-            <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary sm:text-[28px]">
-              {title}
-            </h1>
-            {sessionDateLabel && (
-              <p className="mt-2 text-sm text-text-muted">{sessionDateLabel}</p>
-            )}
-          </header>
+      {/* Hero media: YouTube recording when present, otherwise the whiteboard
+          first-page preview. */}
+      {youtubeUrl ? (
+        <YouTubeEmbed url={youtubeUrl} title={title} />
+      ) : thumbnailUrl ? (
+        <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
+      ) : pdfUrl ? (
+        <ThumbnailPlaceholder title={title} />
+      ) : null}
 
-          {pdfUrl && (
-            <div className="flex flex-wrap items-center gap-3">
-              <DownloadPdfButton href={pdfUrl} fileName={originalFileName} />
-              <p className="text-xs text-text-muted">
-                Open the full slide deck (PDF).
-              </p>
+      {chiefComplaint?.trim() && (
+        <DetailSection title="Chief Concern">
+          <p className="text-[15px] font-semibold text-text-primary">
+            {chiefComplaint.trim()}
+          </p>
+        </DetailSection>
+      )}
+
+      {showPeople && (
+        <div className="flex flex-wrap gap-2">
+          {presenters.length > 0 && (
+            <div className="flex-1 min-w-[220px] rounded-[10px] border border-border-default bg-surface-secondary px-4 py-3">
+              <SectionLabel>
+                Presenter{presenters.length > 1 ? "s" : ""}
+              </SectionLabel>
+              <div className="mt-1 text-sm text-text-primary">
+                <PeoplePreview people={presenters} emptyLabel="" />
+              </div>
             </div>
           )}
-
-          {chiefComplaint?.trim() && (
-            <DetailSection title="Chief Concern">
-              <p className="text-[15px] font-semibold text-text-primary">
-                {chiefComplaint.trim()}
-              </p>
-            </DetailSection>
+          {discussants.length > 0 && (
+            <div className="flex-1 min-w-[220px] rounded-[10px] border border-border-default bg-surface-secondary px-4 py-3">
+              <SectionLabel>Discussants</SectionLabel>
+              <div className="mt-1 text-sm text-text-primary">
+                <PeoplePreview people={discussants} emptyLabel="" />
+              </div>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
-      {(presenters.length > 0 || discussants.length > 0) &&
-        (isStandardPreview(templateType) || templateType === "sunday_fundamentals") && (
-          <div className="flex flex-wrap gap-2">
-            {presenters.length > 0 && (
-              <div className="flex-1 min-w-[220px] rounded-[10px] border border-border-default bg-surface-secondary px-4 py-3">
-                <SectionLabel>
-                  Presenter{presenters.length > 1 ? "s" : ""}
-                </SectionLabel>
-                <div className="mt-1 text-sm text-text-primary">
-                  <PeoplePreview people={presenters} emptyLabel="" />
-                </div>
-              </div>
-            )}
-            {discussants.length > 0 && (
-              <div className="flex-1 min-w-[220px] rounded-[10px] border border-border-default bg-surface-secondary px-4 py-3">
-                <SectionLabel>Discussants</SectionLabel>
-                <div className="mt-1 text-sm text-text-primary">
-                  <PeoplePreview people={discussants} emptyLabel="" />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-      {youtubeUrl && (
-        <DetailSection title="Watch the full discussion">
-          <YouTubeEmbed url={youtubeUrl} title={title} />
+      {/* Slide deck download lives below the discussion + people. When the
+          recording was the hero, also show the whiteboard preview here so the
+          slides are still visible, not just a button. */}
+      {pdfUrl && (
+        <DetailSection title="Slides & teaching points">
+          {youtubeUrl && thumbnailUrl && (
+            <div className="mb-3 max-w-md">
+              <ThumbnailHero
+                src={thumbnailUrl}
+                alt={`${title} — first slide preview`}
+              />
+            </div>
+          )}
+          <DownloadPdfButton href={pdfUrl} fileName={originalFileName} />
         </DetailSection>
       )}
 
