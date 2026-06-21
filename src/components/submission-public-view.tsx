@@ -176,14 +176,10 @@ export function SubmissionPublicView({
       )}
 
       {noteParagraphs && (
-        <DetailSection
-          title={
-            isStandardPreview(templateType)
-              ? "Case Summary & Teaching Points"
-              : "Notes"
-          }
-        >
-          <div className="space-y-3 text-sm">{noteParagraphs}</div>
+        <DetailSection title="Teaching Pearl">
+          <div className="space-y-3 text-sm italic text-text-secondary">
+            {noteParagraphs}
+          </div>
         </DetailSection>
       )}
 

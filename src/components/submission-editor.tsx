@@ -39,6 +39,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+// Teaching Pearl: one concise takeaway, not a full write-up (the detail lives in
+// the video + whiteboard). The limit is a soft guide — over it shows a red
+// warning but still saves, so legacy long notes can still be edited/trimmed.
+const TEACHING_PEARL_WORD_LIMIT = 50;
+
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
 const PERSON_LINK_TYPE_LABELS: Record<(typeof PERSON_LINK_TYPE_OPTIONS)[number], string> = {
   none: "No link",
   x: "X (Twitter)",
@@ -205,6 +215,8 @@ export function SubmissionEditor({
   const discussantsPreview = buildLinkedPeople(state.discussants);
   const titlePreview = getTitlePreview(state);
   const uploadRule = TEMPLATE_UPLOAD_RULES[state.templateType];
+  const pearlWordCount = countWords(state.notes ?? "");
+  const pearlOverLimit = pearlWordCount > TEACHING_PEARL_WORD_LIMIT;
   const sessionDateLabel = state.sessionDate
     ? formatDisplayDate(state.sessionDate)
     : null;
@@ -757,14 +769,40 @@ export function SubmissionEditor({
               />
             </label>
 
-            <label className="block space-y-1.5">
-              <FieldLabel>Notes</FieldLabel>
-              <Textarea
-                value={state.notes}
-                onChange={(e) => setState({ ...state, notes: e.target.value })}
-                placeholder="Teaching points or supporting notes"
-              />
-            </label>
+            <div className="space-y-1.5">
+              <label className="block space-y-1.5">
+                <FieldLabel>Teaching Pearl</FieldLabel>
+                <Textarea
+                  value={state.notes}
+                  onChange={(e) => setState({ ...state, notes: e.target.value })}
+                  placeholder="Example: In a patient with unexplained dyspnea and clear lungs, always consider pulmonary vascular disease, especially when symptoms are exertional and disproportionate."
+                />
+              </label>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs text-text-muted">
+                  If you had to keep one single major point from this case, what
+                  would it be? Max {TEACHING_PEARL_WORD_LIMIT} words.
+                </p>
+                <span
+                  className={cn(
+                    "shrink-0 text-xs tabular-nums",
+                    pearlOverLimit
+                      ? "font-medium text-status-danger"
+                      : "text-text-muted",
+                  )}
+                  aria-live="polite"
+                >
+                  {pearlWordCount}/{TEACHING_PEARL_WORD_LIMIT}
+                </span>
+              </div>
+              {pearlOverLimit && (
+                <p className="text-xs font-medium text-status-danger" role="alert">
+                  That&apos;s over the {TEACHING_PEARL_WORD_LIMIT}-word limit — trim
+                  it to one concise takeaway so it doesn&apos;t duplicate the video
+                  or whiteboard.
+                </p>
+              )}
+            </div>
           </div>
         </Card>
 
