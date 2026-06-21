@@ -69,6 +69,7 @@ export default async function SubmissionDetailPage({
   const withCacheBust = (path: string | null) =>
     path ? (cacheBust ? `${path}?v=${cacheBust}` : path) : null;
   const pdfUrl = withCacheBust(submission.storagePath);
+  const thumbnailUrl = withCacheBust(submission.thumbnailPath);
   const role = user.role;
   const initialFeedback = flashToFeedback(flash, submission.status);
 
@@ -90,6 +91,7 @@ export default async function SubmissionDetailPage({
         initialState={toFormState(submission)}
         submissionId={submission.id}
         pdfUrl={pdfUrl}
+        thumbnailUrl={thumbnailUrl}
         originalFileName={submission.originalFileName}
         publicUrl={submission.slug ? buildSubmissionPublicUrl(submission.slug) : null}
         userRole={role}

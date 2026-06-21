@@ -36,6 +36,43 @@ function YouTubeEmbed({ url, title }: { url: string; title: string }) {
   );
 }
 
+// For whiteboard-only VMRs (no recording) the whiteboard IS the headline, so we
+// show it inline like the video embed instead of hiding it behind the download
+// button. object-contain keeps the whole page visible whatever its aspect, and
+// the image links to the full PDF.
+function WhiteboardHero({
+  src,
+  pdfUrl,
+  title,
+}: {
+  src: string;
+  pdfUrl?: string | null;
+  title: string;
+}) {
+  const frame = (
+    <div className="overflow-hidden rounded-[10px] border border-border-default bg-white p-2 transition-colors group-hover:border-accent">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`${title} — whiteboard`}
+        className="mx-auto max-h-[75vh] w-full object-contain"
+      />
+    </div>
+  );
+  if (!pdfUrl) return frame;
+  return (
+    <a
+      href={pdfUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="group block"
+      aria-label={`Open the full whiteboard for ${title} (PDF, opens in a new tab)`}
+    >
+      {frame}
+    </a>
+  );
+}
+
 function DownloadWhiteboardButton({
   href,
   fileName,
@@ -105,6 +142,7 @@ export function SubmissionPublicView({
   presenters,
   discussants,
   pdfUrl,
+  thumbnailUrl,
   originalFileName,
   notes,
   youtubeUrl,
@@ -117,6 +155,7 @@ export function SubmissionPublicView({
   presenters: LinkedPerson[];
   discussants: LinkedPerson[];
   pdfUrl?: string | null;
+  thumbnailUrl?: string | null;
   originalFileName?: string | null;
   notes?: string | null;
   youtubeUrl?: string | null;
@@ -127,10 +166,10 @@ export function SubmissionPublicView({
     (presenters.length > 0 || discussants.length > 0) &&
     (isStandardPreview(templateType) || templateType === "sunday_fundamentals");
 
-  // Reading order: title → recording (only when there's a video) → chief concern
-  // → presenters/discussants → teaching notes → a single download button for the
-  // whiteboard + teaching points. No whiteboard preview image — the download
-  // button is the one way to grab the slides.
+  // Reading order: title → headline media → chief concern → presenters/discussants
+  // → teaching pearl → download. The headline is the recording when there's a
+  // video; for whiteboard-only sessions the whiteboard image stands in for it so
+  // the page isn't bare. The download button is still the way to grab the PDF.
   return (
     <article className={cn("space-y-6", className)}>
       <header>
@@ -142,7 +181,11 @@ export function SubmissionPublicView({
         )}
       </header>
 
-      {youtubeUrl && <YouTubeEmbed url={youtubeUrl} title={title} />}
+      {youtubeUrl ? (
+        <YouTubeEmbed url={youtubeUrl} title={title} />
+      ) : thumbnailUrl ? (
+        <WhiteboardHero src={thumbnailUrl} pdfUrl={pdfUrl} title={title} />
+      ) : null}
 
       {chiefComplaint?.trim() && (
         <DetailSection title="Chief Concern">

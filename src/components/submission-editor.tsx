@@ -149,6 +149,7 @@ export function SubmissionEditor({
   initialState,
   mode,
   pdfUrl,
+  thumbnailUrl,
   originalFileName,
   publicUrl,
   submissionId,
@@ -158,6 +159,7 @@ export function SubmissionEditor({
   initialState: SubmissionFormState;
   mode: "create" | "edit";
   pdfUrl?: string | null;
+  thumbnailUrl?: string | null;
   originalFileName?: string | null;
   publicUrl?: string | null;
   submissionId?: string;
@@ -1120,6 +1122,7 @@ export function SubmissionEditor({
               presenters={presentersPreview}
               discussants={discussantsPreview}
               pdfUrl={pdfUrl}
+              thumbnailUrl={thumbnailUrl}
               originalFileName={originalFileName}
               notes={state.notes}
               youtubeUrl={state.youtubeUrl}
