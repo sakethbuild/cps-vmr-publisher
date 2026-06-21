@@ -22,6 +22,11 @@ const RENDER_SCALE = 2;
 
 export async function renderFirstPagePngFromBuffer(
   pdfBytes: Buffer,
+  // Extra clockwise rotation (degrees) applied on top of the page's own
+  // orientation. Used by the manual "rotate whiteboard" control to upright a
+  // PDF that was exported sideways. mupdf sizes the pixmap to the rotated
+  // bounds, so the output is correctly dimensioned (W/H swap at 90/270).
+  rotation = 0,
 ): Promise<Buffer> {
   const mupdf = await import("mupdf");
 
@@ -31,13 +36,14 @@ export async function renderFirstPagePngFromBuffer(
       throw new Error("PDF has no pages");
     }
     const page = doc.loadPage(0);
+    const scale = mupdf.Matrix.scale(RENDER_SCALE, RENDER_SCALE);
+    const matrix =
+      rotation % 360 === 0
+        ? scale
+        : mupdf.Matrix.concat(scale, mupdf.Matrix.rotate(rotation));
     // alpha=false → opaque white background, which is what we want for a
     // slide-deck preview thumbnail.
-    const pixmap = page.toPixmap(
-      mupdf.Matrix.scale(RENDER_SCALE, RENDER_SCALE),
-      mupdf.ColorSpace.DeviceRGB,
-      false,
-    );
+    const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false);
     return Buffer.from(pixmap.asPNG());
   } finally {
     // mupdf holds WASM-heap resources; free them so a warm Lambda doesn't leak.

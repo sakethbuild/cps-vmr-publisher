@@ -73,6 +73,7 @@ model Submission {
   storagePath          String?
   thumbnailPath        String?
   thumbnailMimeType    String?
+  thumbnailRotation    Int              @default(0)
   uploadConfirmedAt    DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt

@@ -144,6 +144,9 @@ export async function POST(request: Request, { params }: ConfirmRouteProps) {
         fileExtension: body.fileExtension,
         thumbnailPath,
         thumbnailMimeType: thumbnailPath ? THUMBNAIL_MIME_TYPE : null,
+        // A fresh PDF resets any manual rotation — the new file renders at its
+        // own orientation.
+        thumbnailRotation: 0,
         uploadConfirmedAt: new Date(),
       },
     });

@@ -1081,6 +1081,30 @@ export function SubmissionEditor({
               <p className="mt-2 text-xs text-text-muted">
                 Picking a new file replaces the current PDF immediately, regenerates the preview, and deletes the old files.
               </p>
+
+              {isSuperAdmin && pdfUrl && (
+                <div className="mt-4 border-t border-border-default pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    disabled={isActionPending}
+                    onClick={() =>
+                      runAction(
+                        `/api/submissions/${submissionId}/rotate-whiteboard`,
+                        "Whiteboard rotated 90°.",
+                      )
+                    }
+                  >
+                    Rotate whiteboard 90°
+                  </Button>
+                  <p className="mt-2 text-xs text-text-muted">
+                    Use this if the whiteboard preview is sideways (the PDF was
+                    exported rotated). Each click turns it another 90°.
+                  </p>
+                </div>
+              )}
             </Card>
           )}
 
