@@ -37,6 +37,13 @@
   --danger-muted: rgba(193, 62, 62, 0.10);
   --published: #7c3aed;
   --published-muted: rgba(124, 58, 237, 0.10);
+
+  /* Extra category hues for VMR-type colour-coding (archive ovals). Kept
+     separate from the status palette so a type colour never reads as a status. */
+  --teal: #0d9488;
+  --teal-muted: rgba(13, 148, 136, 0.10);
+  --pink: #be3f7a;
+  --pink-muted: rgba(190, 63, 122, 0.10);
 }
 
 /* ── Dark mode — SearchCPS exact values ── */
@@ -68,6 +75,11 @@
   --danger-muted: rgba(224, 85, 85, 0.12);
   --published: #a78bfa;
   --published-muted: rgba(167, 139, 250, 0.12);
+
+  --teal: #2dd4bf;
+  --teal-muted: rgba(45, 212, 191, 0.14);
+  --pink: #f472b6;
+  --pink-muted: rgba(244, 114, 182, 0.14);
 }
 
 @theme inline {

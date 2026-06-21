@@ -2,8 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { formatDisplayDate } from "@/lib/dates";
-import { TEMPLATE_TYPE_LABELS } from "@/lib/constants";
 import { buildSubmissionPublicPath } from "@/lib/public-pages";
+import {
+  getPublicTemplateLabel,
+  getTemplateBadgeStyle,
+} from "@/lib/template-display";
 import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
 type VmrCardSubmission = {
@@ -13,6 +16,7 @@ type VmrCardSubmission = {
   sessionDate: Date;
   templateType: string;
   chiefComplaint: string | null;
+  customTitle: string | null;
   youtubeUrl: string | null;
   thumbnailPath: string | null;
 };
@@ -44,8 +48,13 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
   const thumbnail = resolveThumbnail(submission);
   const gradientClass =
     TEMPLATE_GRADIENTS[submission.templateType] ?? TEMPLATE_GRADIENTS.custom;
-  const templateLabel =
-    TEMPLATE_TYPE_LABELS[submission.templateType] ?? submission.templateType;
+  // Public type label: standard → "Virtual Morning Report", custom → the
+  // submitter's own name, IMG → "International Medical Graduate VMR", etc.
+  const templateLabel = getPublicTemplateLabel(
+    submission.templateType,
+    submission.customTitle,
+  );
+  const badgeSolid = getTemplateBadgeStyle(submission.templateType).solid;
   // F8: card title is the chief concern (the human-meaningful part), falling
   // back to the VMR type label when there's no chief concern. The date shows
   // once underneath — no more title-baked date + redundant chief-concern block.
@@ -75,7 +84,9 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
             </span>
           </div>
         )}
-        <span className="absolute right-2 top-2 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+        <span
+          className={`absolute right-2 top-2 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${badgeSolid}`}
+        >
           {templateLabel}
         </span>
       </div>

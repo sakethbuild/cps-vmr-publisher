@@ -36,29 +36,13 @@ function YouTubeEmbed({ url, title }: { url: string; title: string }) {
   );
 }
 
-function ThumbnailHero({ src, alt }: { src: string; alt: string }) {
-  return (
-    <div className="aspect-video w-full overflow-hidden rounded-[10px] border border-border-default bg-white">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className="block h-full w-full object-cover" />
-    </div>
-  );
-}
-
-function ThumbnailPlaceholder({ title }: { title: string }) {
-  return (
-    <div
-      className="aspect-video w-full rounded-[10px] border border-dashed border-border-default bg-surface-tertiary flex items-center justify-center"
-      aria-label={`Preview not available for ${title}`}
-    >
-      <span className="text-xs font-medium uppercase tracking-wider text-text-muted">
-        Preview unavailable
-      </span>
-    </div>
-  );
-}
-
-function DownloadPdfButton({ href, fileName }: { href: string; fileName?: string | null }) {
+function DownloadWhiteboardButton({
+  href,
+  fileName,
+}: {
+  href: string;
+  fileName?: string | null;
+}) {
   return (
     <a
       href={href}
@@ -72,7 +56,7 @@ function DownloadPdfButton({ href, fileName }: { href: string; fileName?: string
         <polyline points="7 10 12 15 17 10" />
         <line x1="12" y1="15" x2="12" y2="3" />
       </svg>
-      Download slide deck (PDF)
+      Download Whiteboard + Teaching Points
     </a>
   );
 }
@@ -121,7 +105,6 @@ export function SubmissionPublicView({
   presenters,
   discussants,
   pdfUrl,
-  thumbnailUrl,
   originalFileName,
   notes,
   youtubeUrl,
@@ -134,7 +117,6 @@ export function SubmissionPublicView({
   presenters: LinkedPerson[];
   discussants: LinkedPerson[];
   pdfUrl?: string | null;
-  thumbnailUrl?: string | null;
   originalFileName?: string | null;
   notes?: string | null;
   youtubeUrl?: string | null;
@@ -145,10 +127,10 @@ export function SubmissionPublicView({
     (presenters.length > 0 || discussants.length > 0) &&
     (isStandardPreview(templateType) || templateType === "sunday_fundamentals");
 
-  // F7 reading order: title → hero media (the recording if there's one, else
-  // the whiteboard) → chief concern → presenters/discussants → download the
-  // slide deck → teaching notes. The video is the headline; the slide deck is
-  // a reference you grab lower down.
+  // Reading order: title → recording (only when there's a video) → chief concern
+  // → presenters/discussants → teaching notes → a single download button for the
+  // whiteboard + teaching points. No whiteboard preview image — the download
+  // button is the one way to grab the slides.
   return (
     <article className={cn("space-y-6", className)}>
       <header>
@@ -160,15 +142,7 @@ export function SubmissionPublicView({
         )}
       </header>
 
-      {/* Hero media: YouTube recording when present, otherwise the whiteboard
-          first-page preview. */}
-      {youtubeUrl ? (
-        <YouTubeEmbed url={youtubeUrl} title={title} />
-      ) : thumbnailUrl ? (
-        <ThumbnailHero src={thumbnailUrl} alt={`${title} — first page preview`} />
-      ) : pdfUrl ? (
-        <ThumbnailPlaceholder title={title} />
-      ) : null}
+      {youtubeUrl && <YouTubeEmbed url={youtubeUrl} title={title} />}
 
       {chiefComplaint?.trim() && (
         <DetailSection title="Chief Concern">
@@ -201,23 +175,6 @@ export function SubmissionPublicView({
         </div>
       )}
 
-      {/* Slide deck download lives below the discussion + people. When the
-          recording was the hero, also show the whiteboard preview here so the
-          slides are still visible, not just a button. */}
-      {pdfUrl && (
-        <DetailSection title="Slides & teaching points">
-          {youtubeUrl && thumbnailUrl && (
-            <div className="mb-3 max-w-md">
-              <ThumbnailHero
-                src={thumbnailUrl}
-                alt={`${title} — first slide preview`}
-              />
-            </div>
-          )}
-          <DownloadPdfButton href={pdfUrl} fileName={originalFileName} />
-        </DetailSection>
-      )}
-
       {noteParagraphs && (
         <DetailSection
           title={
@@ -228,6 +185,14 @@ export function SubmissionPublicView({
         >
           <div className="space-y-3 text-sm">{noteParagraphs}</div>
         </DetailSection>
+      )}
+
+      {/* Single download near the bottom — the whiteboard + written teaching
+          points live in this one PDF. */}
+      {pdfUrl && (
+        <div className="mt-5 border-t border-border-default pt-5">
+          <DownloadWhiteboardButton href={pdfUrl} fileName={originalFileName} />
+        </div>
       )}
     </article>
   );

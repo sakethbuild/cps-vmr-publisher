@@ -1,12 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import type { SubmissionStatus, TemplateType } from "@prisma/client";
 
-import { PeoplePreview } from "@/components/people-preview";
 import { SubmissionPublicView } from "@/components/submission-public-view";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -141,20 +139,23 @@ export function SubmissionEditor({
   initialState,
   mode,
   pdfUrl,
-  thumbnailUrl,
   originalFileName,
   publicUrl,
   submissionId,
   userRole = "super_admin",
+  initialFeedback = null,
 }: {
   initialState: SubmissionFormState;
   mode: "create" | "edit";
   pdfUrl?: string | null;
-  thumbnailUrl?: string | null;
   originalFileName?: string | null;
   publicUrl?: string | null;
   submissionId?: string;
   userRole?: "member" | "super_admin" | null;
+  initialFeedback?: {
+    tone: "success" | "error" | "info";
+    message: string;
+  } | null;
 }) {
   const isSuperAdmin = userRole === "super_admin";
   // Members can edit unpublished submissions, but a published VMR is locked
@@ -168,9 +169,9 @@ export function SubmissionEditor({
   const [dragActive, setDragActive] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<UploadPhase>({ kind: "idle" });
   const [feedback, setFeedback] = useState<{
-    tone: "success" | "error";
+    tone: "success" | "error" | "info";
     message: string;
-  } | null>(null);
+  } | null>(initialFeedback);
   const feedbackRef = useRef<HTMLDivElement | null>(null);
   const replaceInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
@@ -384,8 +385,9 @@ export function SubmissionEditor({
     return { id, status: finalStatus };
   }
 
-  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // Shared by "Submit VMR" / "Save changes" (publishAfter=false) and the
+  // super-admin create-mode "Submit and Publish" (publishAfter=true).
+  async function performSubmit(publishAfter: boolean) {
     setFeedback(null);
 
     if (hasUnlinkedHandle(state.presenters) || hasUnlinkedHandle(state.discussants)) {
@@ -410,16 +412,24 @@ export function SubmissionEditor({
         try {
           const { id } = await persistForm();
 
-          setFeedback({
-            tone: "success",
-            message: mode === "create" ? "Submission saved." : "Submission updated.",
-          });
-
           if (mode === "create" && id) {
+            if (publishAfter) {
+              // One-click publish of the just-created VMR. If it isn't ready
+              // (e.g. no YouTube yet) the publish 400s and it stays a draft —
+              // the edit page explains what's missing via ?flash=needs-more.
+              const response = await fetch(`/api/submissions/${id}/publish`, {
+                method: "POST",
+              });
+              router.push(
+                `/admin/submissions/${id}?flash=${response.ok ? "published" : "needs-more"}`,
+              );
+              return;
+            }
             router.push(`/admin/submissions/${id}`);
             return;
           }
 
+          setFeedback({ tone: "success", message: "Submission updated." });
           setSelectedFile(null);
           router.refresh();
         } catch (error) {
@@ -431,6 +441,11 @@ export function SubmissionEditor({
         }
       })();
     });
+  }
+
+  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void performSubmit(false);
   }
 
   // B1: Publish saves the current form first (so a just-typed YouTube URL is in
@@ -626,9 +641,12 @@ export function SubmissionEditor({
             role={feedback.tone === "error" ? "alert" : "status"}
             className={cn(
               "rounded-lg border px-4 py-3 text-sm",
-              feedback.tone === "success"
-                ? "border-status-success/20 bg-status-success-muted text-status-success"
-                : "border-status-danger/20 bg-status-danger-muted text-status-danger",
+              feedback.tone === "success" &&
+                "border-status-success/20 bg-status-success-muted text-status-success",
+              feedback.tone === "error" &&
+                "border-status-danger/20 bg-status-danger-muted text-status-danger",
+              feedback.tone === "info" &&
+                "border-status-warning/20 bg-status-warning-muted text-status-warning",
             )}
           >
             {feedback.message}
@@ -911,6 +929,19 @@ export function SubmissionEditor({
                 : "Save changes"}
           </Button>
 
+          {mode === "create" && isSuperAdmin && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              disabled={isPending || isUploadBusy}
+              onClick={() => void performSubmit(true)}
+              className="border-status-success/30 text-status-success hover:bg-status-success-muted"
+            >
+              {isPending || isUploadBusy ? "Working…" : "Submit and Publish"}
+            </Button>
+          )}
+
           {mode === "edit" && state.id && (
             <>
               {isSuperAdmin && !isPublished && (
@@ -1041,7 +1072,6 @@ export function SubmissionEditor({
               presenters={presentersPreview}
               discussants={discussantsPreview}
               pdfUrl={pdfUrl}
-              thumbnailUrl={thumbnailUrl}
               originalFileName={originalFileName}
               notes={state.notes}
               youtubeUrl={state.youtubeUrl}

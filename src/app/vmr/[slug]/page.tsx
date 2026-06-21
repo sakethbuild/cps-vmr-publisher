@@ -53,7 +53,6 @@ export default async function PublicSubmissionPage({
   const withCacheBust = (path: string | null) =>
     path ? (cacheBust ? `${path}?v=${cacheBust}` : path) : null;
   const pdfUrl = withCacheBust(submission.storagePath);
-  const thumbnailUrl = withCacheBust(submission.thumbnailPath);
   const presenters = buildLinkedPeople(
     submission.people
       .filter((p) => p.role === "presenter")
@@ -95,7 +94,6 @@ export default async function PublicSubmissionPage({
         presenters={presenters}
         discussants={discussants}
         pdfUrl={pdfUrl}
-        thumbnailUrl={thumbnailUrl}
         originalFileName={submission.originalFileName}
         notes={submission.notes}
         youtubeUrl={submission.youtubeUrl}

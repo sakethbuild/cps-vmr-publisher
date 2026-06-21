@@ -108,7 +108,7 @@ export const TEMPLATE_UPLOAD_RULES: Record<
 export const TEMPLATE_TYPE_LABELS: Record<string, string> = {
   standard: "Standard",
   raphael_medina_subspecialty: "Rafael Medina Subspecialty",
-  img_vmr: "IMG VMR",
+  img_vmr: "International Medical Graduate VMR",
   sunday_fundamentals: "Sunday Fundamentals",
   simplicity_in_complexity_vmr: "Simplicity in Complexity VMR",
   academy_session: "Academy Session",

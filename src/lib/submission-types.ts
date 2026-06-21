@@ -54,7 +54,8 @@ export const submissionSchema = z
     if (value.templateType === "img_vmr" && !value.residencyProgram) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Residency program is required for IMG VMR submissions.",
+        message:
+          "Residency program is required for International Medical Graduate VMR submissions.",
         path: ["residencyProgram"],
       });
     }
