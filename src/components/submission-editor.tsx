@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import type { SubmissionStatus, TemplateType } from "@prisma/client";
@@ -164,6 +164,7 @@ export function SubmissionEditor({
   // etc. — so members don't see clickable controls that the backend will
   // reject (the backend gates the same routes).
   const router = useRouter();
+  const pathname = usePathname();
   const [state, setState] = useState(initialState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -187,6 +188,15 @@ export function SubmissionEditor({
   useEffect(() => {
     setState((prev) => ({ ...prev, existingFileName: initialState.existingFileName }));
   }, [initialState.existingFileName]);
+  // The ?flash param (from create-mode "Submit and Publish") seeds the banner
+  // once via initialFeedback. Strip it from the URL so a refresh doesn't re-show
+  // a now-stale "saved as a draft" message.
+  useEffect(() => {
+    if (initialFeedback) {
+      router.replace(pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [isPending, startTransition] = useTransition();
   const [isActionPending, startActionTransition] = useTransition();
   const [isCopyPending, startCopyTransition] = useTransition();
@@ -646,7 +656,7 @@ export function SubmissionEditor({
               feedback.tone === "error" &&
                 "border-status-danger/20 bg-status-danger-muted text-status-danger",
               feedback.tone === "info" &&
-                "border-status-warning/20 bg-status-warning-muted text-status-warning",
+                "border-accent/20 bg-accent-muted text-accent",
             )}
           >
             {feedback.message}

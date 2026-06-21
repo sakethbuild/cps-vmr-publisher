@@ -69,6 +69,7 @@ export default async function PublicVmrArchivePage() {
             href="https://clinicalproblemsolving.com/"
             target="_blank"
             rel="noreferrer"
+            aria-label="Visit the main CPS website (opens in a new tab)"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             Visit the main CPS website

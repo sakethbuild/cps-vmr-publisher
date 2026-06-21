@@ -6,8 +6,8 @@ import { buildSubmissionPublicPath } from "@/lib/public-pages";
 import {
   getPublicTemplateLabel,
   getTemplateBadgeStyle,
+  resolveArchiveThumbnail,
 } from "@/lib/template-display";
-import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
 type VmrCardSubmission = {
   id: string;
@@ -32,20 +32,10 @@ const TEMPLATE_GRADIENTS: Record<string, string> = {
   custom: "from-surface-tertiary to-surface-secondary",
 };
 
-function resolveThumbnail(submission: VmrCardSubmission): string | null {
-  // F6: prefer the YouTube video still when there's a recording; fall back to
-  // the auto-generated PDF whiteboard when there's no video link.
-  if (submission.youtubeUrl?.trim()) {
-    const ytThumb = getYouTubeThumbnailUrl(submission.youtubeUrl);
-    if (ytThumb) return ytThumb;
-  }
-  return submission.thumbnailPath;
-}
-
 export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
   if (!submission.slug) return null;
 
-  const thumbnail = resolveThumbnail(submission);
+  const thumbnail = resolveArchiveThumbnail(submission);
   const gradientClass =
     TEMPLATE_GRADIENTS[submission.templateType] ?? TEMPLATE_GRADIENTS.custom;
   // Public type label: standard → "Virtual Morning Report", custom → the
@@ -54,7 +44,7 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
     submission.templateType,
     submission.customTitle,
   );
-  const badgeSolid = getTemplateBadgeStyle(submission.templateType).solid;
+  const badgeDot = getTemplateBadgeStyle(submission.templateType).dot;
   // F8: card title is the chief concern (the human-meaningful part), falling
   // back to the VMR type label when there's no chief concern. The date shows
   // once underneath — no more title-baked date + redundant chief-concern block.
@@ -84,9 +74,11 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
             </span>
           </div>
         )}
-        <span
-          className={`absolute right-2 top-2 rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${badgeSolid}`}
-        >
+        <span className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${badgeDot}`}
+            aria-hidden="true"
+          />
           {templateLabel}
         </span>
       </div>

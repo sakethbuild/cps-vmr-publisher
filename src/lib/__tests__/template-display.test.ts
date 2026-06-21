@@ -58,7 +58,7 @@ describe("getTemplateBadgeStyle", () => {
 
   it("gives standard (Virtual Morning Report) the accent/blue treatment", () => {
     expect(getTemplateBadgeStyle("standard").muted).toContain("accent");
-    expect(getTemplateBadgeStyle("standard").solid).toContain("accent");
+    expect(getTemplateBadgeStyle("standard").dot).toContain("accent");
   });
 
   it("gives simplicity + academy distinct (teal/pink) hues", () => {
@@ -71,6 +71,6 @@ describe("getTemplateBadgeStyle", () => {
   it("returns a neutral fallback for unknown types", () => {
     const style = getTemplateBadgeStyle("nope");
     expect(style.muted).toContain("surface-tertiary");
-    expect(style.solid).toBeTruthy();
+    expect(style.dot).toBeTruthy();
   });
 });

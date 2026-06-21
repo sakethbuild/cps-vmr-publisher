@@ -13,9 +13,9 @@ import { buildSubmissionPublicPath } from "@/lib/public-pages";
 import {
   getPublicTemplateLabel,
   getTemplateBadgeStyle,
+  resolveArchiveThumbnail,
 } from "@/lib/template-display";
 import { cn } from "@/lib/ui";
-import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
 // Mirrors the fields VmrCard needs plus what the list row + search need. React
 // keeps Date instances intact across the RSC → client boundary, so sessionDate
@@ -37,14 +37,6 @@ export type ArchiveSubmission = {
 
 type ViewMode = "list" | "grid";
 
-function resolveThumbnail(s: ArchiveSubmission): string | null {
-  if (s.youtubeUrl?.trim()) {
-    const yt = getYouTubeThumbnailUrl(s.youtubeUrl);
-    if (yt) return yt;
-  }
-  return s.thumbnailPath;
-}
-
 // Session dates are stored at T12:00:00Z, so format in UTC to match
 // formatDisplayDate and avoid an off-by-one near month boundaries.
 function monthKey(d: Date): string {
@@ -61,7 +53,7 @@ function monthLabel(d: Date): string {
 
 function ListRow({ submission }: { submission: ArchiveSubmission }) {
   if (!submission.slug) return null;
-  const thumb = resolveThumbnail(submission);
+  const thumb = resolveArchiveThumbnail(submission);
   const templateLabel = getPublicTemplateLabel(
     submission.templateType,
     submission.customTitle,
@@ -121,7 +113,7 @@ function ToggleButton({
       aria-pressed={active}
       aria-label={label}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        "inline-flex min-h-[36px] items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
         active
           ? "bg-accent-muted text-accent"
           : "text-text-muted hover:bg-surface-tertiary hover:text-text-primary",
@@ -208,19 +200,22 @@ export function VmrArchive({
           className="sm:flex-1"
         />
         <div className="flex items-center gap-2">
-          <Select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            aria-label="Filter by month"
-            className="w-44"
-          >
-            <option value="all">All dates</option>
-            {months.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </Select>
+          {/* A month filter only helps once there's more than one month. */}
+          {months.length > 1 && (
+            <Select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              aria-label="Filter by month"
+              className="w-44"
+            >
+              <option value="all">All dates</option>
+              {months.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+          )}
           <div
             className="ml-auto flex gap-1"
             role="group"

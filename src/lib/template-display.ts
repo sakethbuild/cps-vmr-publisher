@@ -1,4 +1,18 @@
 import { TEMPLATE_TYPE_LABELS } from "@/lib/constants";
+import { getYouTubeThumbnailUrl } from "@/lib/youtube";
+
+// Archive preview image: prefer the YouTube still when there's a recording, fall
+// back to the auto-generated PDF whiteboard. Shared by the card + the list row.
+export function resolveArchiveThumbnail(submission: {
+  youtubeUrl: string | null;
+  thumbnailPath: string | null;
+}): string | null {
+  if (submission.youtubeUrl?.trim()) {
+    const ytThumb = getYouTubeThumbnailUrl(submission.youtubeUrl);
+    if (ytThumb) return ytThumb;
+  }
+  return submission.thumbnailPath;
+}
 
 // Public-facing type label for the archive (card + list row).
 //  - "standard" reads as "Virtual Morning Report" for visitors, even though the
@@ -19,56 +33,58 @@ export function getPublicTemplateLabel(
 // Colour-coding for the small type oval on the public archive (item: colour
 // code the label, NOT the whole card). Two treatments per type:
 //  - `muted`: tinted background + coloured text, used on the list row where the
-//    oval sits on a plain surface.
-//  - `solid`: solid colour + white text, used on the grid card where the oval
-//    sits over a thumbnail and needs contrast.
+//    oval sits on a plain surface (matches the app's existing badge pattern).
+//  - `dot`: a small coloured dot shown alongside white text on a dark scrim, used
+//    on the grid card where the oval sits over a thumbnail. White-on-dark keeps
+//    AA contrast over any image; the dot + the label text carry the category, so
+//    colour is never the sole signal.
 // Colours come from the design-system tokens (accent/success/warning/published)
 // plus two extra hues (teal/pink) defined in globals.css so simplicity + academy
 // stay distinct without overloading the status palette.
-export type TemplateBadgeStyle = { muted: string; solid: string };
+export type TemplateBadgeStyle = { muted: string; dot: string };
 
 const TEMPLATE_BADGE_STYLES: Record<string, TemplateBadgeStyle> = {
   // Virtual Morning Report — blue
-  standard: { muted: "bg-accent-muted text-accent", solid: "bg-accent text-white" },
+  standard: { muted: "bg-accent-muted text-accent", dot: "bg-accent" },
   // Sunday / Monday fundamentals — green
   sunday_fundamentals: {
     muted: "bg-status-success-muted text-status-success",
-    solid: "bg-status-success text-white",
+    dot: "bg-status-success",
   },
   mainstream_mondays: {
     muted: "bg-status-success-muted text-status-success",
-    solid: "bg-status-success text-white",
+    dot: "bg-status-success",
   },
   // International Medical Graduate — orange
   img_vmr: {
     muted: "bg-status-warning-muted text-status-warning",
-    solid: "bg-status-warning text-white",
+    dot: "bg-status-warning",
   },
   // Rafael Medina Subspecialty — purple
   raphael_medina_subspecialty: {
     muted: "bg-status-published-muted text-status-published",
-    solid: "bg-status-published text-white",
+    dot: "bg-status-published",
   },
   // Simplicity in Complexity — teal
   simplicity_in_complexity_vmr: {
     muted: "bg-[var(--teal-muted)] text-[var(--teal)]",
-    solid: "bg-[var(--teal)] text-white",
+    dot: "bg-[var(--teal)]",
   },
   // Academy Session — pink
   academy_session: {
     muted: "bg-[var(--pink-muted)] text-[var(--pink)]",
-    solid: "bg-[var(--pink)] text-white",
+    dot: "bg-[var(--pink)]",
   },
   // Custom — neutral (no strong colour; the label itself carries the meaning)
   custom: {
     muted: "bg-surface-tertiary text-text-secondary",
-    solid: "bg-black/70 text-white",
+    dot: "bg-text-muted",
   },
 };
 
 const DEFAULT_BADGE_STYLE: TemplateBadgeStyle = {
   muted: "bg-surface-tertiary text-text-secondary",
-  solid: "bg-black/70 text-white",
+  dot: "bg-text-muted",
 };
 
 export function getTemplateBadgeStyle(templateType: string): TemplateBadgeStyle {
