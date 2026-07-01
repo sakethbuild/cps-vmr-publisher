@@ -68,9 +68,28 @@ describe("getTemplateBadgeStyle", () => {
     expect(getTemplateBadgeStyle("academy_session").muted).toContain("pink");
   });
 
-  it("returns a neutral fallback for unknown types", () => {
-    const style = getTemplateBadgeStyle("nope");
-    expect(style.muted).toContain("surface-tertiary");
-    expect(style.dot).toBeTruthy();
+  it("auto-assigns custom VMRs a deterministic colour from their name", () => {
+    const a = getTemplateBadgeStyle("custom", "A Case From the RLR Book");
+    // same name → same colour, everywhere it renders
+    expect(getTemplateBadgeStyle("custom", "A Case From the RLR Book")).toEqual(a);
+    // a category colour, not the old shared neutral grey
+    expect(a.muted).toContain("--cat-");
+    expect(a.dot).toContain("--cat-");
+    expect(a.muted).not.toContain("surface-tertiary");
+  });
+
+  it("spreads distinct custom names across different colours", () => {
+    const names = [
+      "A Case From the RLR Book",
+      "Clinical Reasoning Expeditions",
+      "Teaching Points Recap VMR",
+      "Discipline of Diagnosis",
+      "Mystery Case Conference",
+    ];
+    const colours = new Set(
+      names.map((n) => getTemplateBadgeStyle("custom", n).dot),
+    );
+    // the bug was every custom sharing one colour — now they spread out
+    expect(colours.size).toBeGreaterThan(1);
   });
 });

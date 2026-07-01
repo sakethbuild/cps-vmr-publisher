@@ -44,6 +44,21 @@
   --teal-muted: rgba(13, 148, 136, 0.10);
   --pink: #be3f7a;
   --pink-muted: rgba(190, 63, 122, 0.10);
+
+  /* Auto-assigned palette for custom VMR types (each distinct custom name gets
+     its own colour). Distinct hues, tuned for text contrast on a light surface. */
+  --cat-red: #b91c1c;
+  --cat-red-muted: rgba(185, 28, 28, 0.10);
+  --cat-amber: #b45309;
+  --cat-amber-muted: rgba(180, 83, 9, 0.10);
+  --cat-lime: #4d7c0f;
+  --cat-lime-muted: rgba(77, 124, 15, 0.10);
+  --cat-cyan: #0e7490;
+  --cat-cyan-muted: rgba(14, 116, 144, 0.10);
+  --cat-indigo: #4338ca;
+  --cat-indigo-muted: rgba(67, 56, 202, 0.10);
+  --cat-fuchsia: #a21caf;
+  --cat-fuchsia-muted: rgba(162, 28, 175, 0.10);
 }
 
 /* ── Dark mode — SearchCPS exact values ── */
@@ -80,6 +95,20 @@
   --teal-muted: rgba(45, 212, 191, 0.14);
   --pink: #f472b6;
   --pink-muted: rgba(244, 114, 182, 0.14);
+
+  /* Auto-assigned custom-type palette — brighter shades for dark surfaces. */
+  --cat-red: #f87171;
+  --cat-red-muted: rgba(248, 113, 113, 0.15);
+  --cat-amber: #fbbf24;
+  --cat-amber-muted: rgba(251, 191, 36, 0.15);
+  --cat-lime: #a3e635;
+  --cat-lime-muted: rgba(163, 230, 53, 0.15);
+  --cat-cyan: #22d3ee;
+  --cat-cyan-muted: rgba(34, 211, 238, 0.15);
+  --cat-indigo: #818cf8;
+  --cat-indigo-muted: rgba(129, 140, 248, 0.15);
+  --cat-fuchsia: #e879f9;
+  --cat-fuchsia-muted: rgba(232, 121, 249, 0.15);
 }
 
 @theme inline {

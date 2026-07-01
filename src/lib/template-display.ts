@@ -38,9 +38,11 @@ export function getPublicTemplateLabel(
 //    on the grid card where the oval sits over a thumbnail. White-on-dark keeps
 //    AA contrast over any image; the dot + the label text carry the category, so
 //    colour is never the sole signal.
-// Colours come from the design-system tokens (accent/success/warning/published)
-// plus two extra hues (teal/pink) defined in globals.css so simplicity + academy
-// stay distinct without overloading the status palette.
+// Known template types get a curated colour (blue = VMR, green = fundamentals,
+// etc.). Custom types have arbitrary user-chosen names, so they can't be
+// hand-mapped — instead each distinct custom name is hashed into AUTO_PALETTE
+// below, so a new custom type automatically gets its own colour rather than
+// every custom sharing one grey.
 export type TemplateBadgeStyle = { muted: string; dot: string };
 
 const TEMPLATE_BADGE_STYLES: Record<string, TemplateBadgeStyle> = {
@@ -75,18 +77,44 @@ const TEMPLATE_BADGE_STYLES: Record<string, TemplateBadgeStyle> = {
     muted: "bg-[var(--pink-muted)] text-[var(--pink)]",
     dot: "bg-[var(--pink)]",
   },
-  // Custom — neutral (no strong colour; the label itself carries the meaning)
-  custom: {
-    muted: "bg-surface-tertiary text-text-secondary",
-    dot: "bg-text-muted",
-  },
+  // NOTE: no `custom` entry — custom types are coloured from AUTO_PALETTE by name.
 };
 
-const DEFAULT_BADGE_STYLE: TemplateBadgeStyle = {
-  muted: "bg-surface-tertiary text-text-secondary",
-  dot: "bg-text-muted",
-};
+// Distinct hues (defined in globals.css, contrast-tuned for both themes) that
+// custom VMR types are hashed into. Deliberately excludes the two primary
+// template colours (blue = VMR, green = fundamentals) so a custom never looks
+// like the most common templates.
+const AUTO_PALETTE: TemplateBadgeStyle[] = [
+  { muted: "bg-[var(--cat-red-muted)] text-[var(--cat-red)]", dot: "bg-[var(--cat-red)]" },
+  { muted: "bg-[var(--cat-amber-muted)] text-[var(--cat-amber)]", dot: "bg-[var(--cat-amber)]" },
+  { muted: "bg-[var(--cat-lime-muted)] text-[var(--cat-lime)]", dot: "bg-[var(--cat-lime)]" },
+  { muted: "bg-[var(--cat-cyan-muted)] text-[var(--cat-cyan)]", dot: "bg-[var(--cat-cyan)]" },
+  { muted: "bg-[var(--cat-indigo-muted)] text-[var(--cat-indigo)]", dot: "bg-[var(--cat-indigo)]" },
+  { muted: "bg-[var(--cat-fuchsia-muted)] text-[var(--cat-fuchsia)]", dot: "bg-[var(--cat-fuchsia)]" },
+];
 
-export function getTemplateBadgeStyle(templateType: string): TemplateBadgeStyle {
-  return TEMPLATE_BADGE_STYLES[templateType] ?? DEFAULT_BADGE_STYLE;
+// Stable, well-distributed string hash (djb2-ish) so a given name always maps to
+// the same palette slot, everywhere it's rendered.
+function hashString(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+export function getTemplateBadgeStyle(
+  templateType: string,
+  customTitle?: string | null,
+): TemplateBadgeStyle {
+  const curated = TEMPLATE_BADGE_STYLES[templateType];
+  if (curated) return curated;
+  // Custom (or any unknown) type: derive a stable colour from its public name so
+  // each distinct custom VMR gets its own consistent colour. A fixed palette
+  // can't guarantee uniqueness for unbounded names, but distinct names almost
+  // always land on distinct colours.
+  const key = (
+    templateType === "custom" ? customTitle?.trim() || "custom" : templateType
+  ).toLowerCase();
+  return AUTO_PALETTE[hashString(key) % AUTO_PALETTE.length];
 }

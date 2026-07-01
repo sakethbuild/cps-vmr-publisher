@@ -58,7 +58,10 @@ function ListRow({ submission }: { submission: ArchiveSubmission }) {
     submission.templateType,
     submission.customTitle,
   );
-  const badgeMuted = getTemplateBadgeStyle(submission.templateType).muted;
+  const badgeMuted = getTemplateBadgeStyle(
+    submission.templateType,
+    submission.customTitle,
+  ).muted;
   const rowTitle = submission.chiefComplaint?.trim() || templateLabel;
 
   return (

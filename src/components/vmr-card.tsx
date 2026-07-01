@@ -44,7 +44,10 @@ export function VmrCard({ submission }: { submission: VmrCardSubmission }) {
     submission.templateType,
     submission.customTitle,
   );
-  const badgeDot = getTemplateBadgeStyle(submission.templateType).dot;
+  const badgeDot = getTemplateBadgeStyle(
+    submission.templateType,
+    submission.customTitle,
+  ).dot;
   // F8: card title is the chief concern (the human-meaningful part), falling
   // back to the VMR type label when there's no chief concern. The date shows
   // once underneath — no more title-baked date + redundant chief-concern block.
