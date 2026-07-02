@@ -196,9 +196,16 @@ body {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* Must live in @layer base: unlayered, this rule outranks Tailwind's
+   @layer utilities and would override text-colour utilities on links (e.g.
+   text-white on the CPS button rendered as the inherited near-black). In the
+   base layer it sets the default (links inherit colour + no underline) while
+   utilities like text-white / text-accent still win. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 ::selection {
