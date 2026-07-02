@@ -45,36 +45,39 @@ export function getPublicTemplateLabel(
 // every custom sharing one grey.
 export type TemplateBadgeStyle = { muted: string; dot: string };
 
+// `muted` text uses the darker --badge-* shades (readable on the light tint);
+// `dot` keeps the brighter base colour. In dark mode --badge-* aliases back to
+// the bright base (see globals.css).
 const TEMPLATE_BADGE_STYLES: Record<string, TemplateBadgeStyle> = {
   // Virtual Morning Report — blue
-  standard: { muted: "bg-accent-muted text-accent", dot: "bg-accent" },
+  standard: { muted: "bg-accent-muted text-[var(--badge-blue)]", dot: "bg-accent" },
   // Sunday / Monday fundamentals — green
   sunday_fundamentals: {
-    muted: "bg-status-success-muted text-status-success",
+    muted: "bg-status-success-muted text-[var(--badge-green)]",
     dot: "bg-status-success",
   },
   mainstream_mondays: {
-    muted: "bg-status-success-muted text-status-success",
+    muted: "bg-status-success-muted text-[var(--badge-green)]",
     dot: "bg-status-success",
   },
   // International Medical Graduate — orange
   img_vmr: {
-    muted: "bg-status-warning-muted text-status-warning",
+    muted: "bg-status-warning-muted text-[var(--badge-orange)]",
     dot: "bg-status-warning",
   },
   // Rafael Medina Subspecialty — purple
   raphael_medina_subspecialty: {
-    muted: "bg-status-published-muted text-status-published",
+    muted: "bg-status-published-muted text-[var(--badge-purple)]",
     dot: "bg-status-published",
   },
   // Simplicity in Complexity — teal
   simplicity_in_complexity_vmr: {
-    muted: "bg-[var(--teal-muted)] text-[var(--teal)]",
+    muted: "bg-[var(--teal-muted)] text-[var(--badge-teal)]",
     dot: "bg-[var(--teal)]",
   },
   // Academy Session — pink
   academy_session: {
-    muted: "bg-[var(--pink-muted)] text-[var(--pink)]",
+    muted: "bg-[var(--pink-muted)] text-[var(--badge-pink)]",
     dot: "bg-[var(--pink)]",
   },
   // NOTE: no `custom` entry — custom types are coloured from AUTO_PALETTE by name.
@@ -85,12 +88,12 @@ const TEMPLATE_BADGE_STYLES: Record<string, TemplateBadgeStyle> = {
 // template colours (blue = VMR, green = fundamentals) so a custom never looks
 // like the most common templates.
 const AUTO_PALETTE: TemplateBadgeStyle[] = [
-  { muted: "bg-[var(--cat-red-muted)] text-[var(--cat-red)]", dot: "bg-[var(--cat-red)]" },
-  { muted: "bg-[var(--cat-amber-muted)] text-[var(--cat-amber)]", dot: "bg-[var(--cat-amber)]" },
-  { muted: "bg-[var(--cat-lime-muted)] text-[var(--cat-lime)]", dot: "bg-[var(--cat-lime)]" },
-  { muted: "bg-[var(--cat-cyan-muted)] text-[var(--cat-cyan)]", dot: "bg-[var(--cat-cyan)]" },
-  { muted: "bg-[var(--cat-indigo-muted)] text-[var(--cat-indigo)]", dot: "bg-[var(--cat-indigo)]" },
-  { muted: "bg-[var(--cat-fuchsia-muted)] text-[var(--cat-fuchsia)]", dot: "bg-[var(--cat-fuchsia)]" },
+  { muted: "bg-[var(--cat-red-muted)] text-[var(--badge-red)]", dot: "bg-[var(--cat-red)]" },
+  { muted: "bg-[var(--cat-amber-muted)] text-[var(--badge-amber)]", dot: "bg-[var(--cat-amber)]" },
+  { muted: "bg-[var(--cat-lime-muted)] text-[var(--badge-lime)]", dot: "bg-[var(--cat-lime)]" },
+  { muted: "bg-[var(--cat-cyan-muted)] text-[var(--badge-cyan)]", dot: "bg-[var(--cat-cyan)]" },
+  { muted: "bg-[var(--cat-indigo-muted)] text-[var(--badge-indigo)]", dot: "bg-[var(--cat-indigo)]" },
+  { muted: "bg-[var(--cat-fuchsia-muted)] text-[var(--badge-fuchsia)]", dot: "bg-[var(--cat-fuchsia)]" },
 ];
 
 // Stable, well-distributed string hash (djb2-ish) so a given name always maps to

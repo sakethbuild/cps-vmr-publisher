@@ -62,6 +62,22 @@
   --cat-indigo-muted: rgba(67, 56, 202, 0.10);
   --cat-fuchsia: #a21caf;
   --cat-fuchsia-muted: rgba(162, 28, 175, 0.10);
+
+  /* Darker text shades used ONLY for the archive type-label text on light
+     surfaces, so the small labels stay easy to read (the dots + tints keep the
+     brighter base colour). Dark mode aliases back to the bright base below. */
+  --badge-blue: #3b4fb0;
+  --badge-green: #206b44;
+  --badge-orange: #7d4e12;
+  --badge-purple: #6d28d9;
+  --badge-teal: #096055;
+  --badge-pink: #9e2a5b;
+  --badge-red: #991b1b;
+  --badge-amber: #8a4008;
+  --badge-lime: #3d620c;
+  --badge-cyan: #0c5c72;
+  --badge-indigo: #362f9e;
+  --badge-fuchsia: #86198f;
 }
 
 /* ── Dark mode — SearchCPS exact values ── */
@@ -112,6 +128,20 @@
   --cat-indigo-muted: rgba(129, 140, 248, 0.15);
   --cat-fuchsia: #e879f9;
   --cat-fuchsia-muted: rgba(232, 121, 249, 0.15);
+
+  /* Dark mode: labels are already bright/readable, so badge text = the base. */
+  --badge-blue: var(--accent);
+  --badge-green: var(--success);
+  --badge-orange: var(--warning);
+  --badge-purple: var(--published);
+  --badge-teal: var(--teal);
+  --badge-pink: var(--pink);
+  --badge-red: var(--cat-red);
+  --badge-amber: var(--cat-amber);
+  --badge-lime: var(--cat-lime);
+  --badge-cyan: var(--cat-cyan);
+  --badge-indigo: var(--cat-indigo);
+  --badge-fuchsia: var(--cat-fuchsia);
 }
 
 @theme inline {
