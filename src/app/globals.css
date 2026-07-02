@@ -16,7 +16,10 @@
 
   --text-primary: #0f1117;
   --text-secondary: #475066;
-  --text-muted: #707790;
+  /* Darkened from #707790 (~4.4:1) to clear WCAG AA — the old grey was hard to
+     read on white for subtitles/helper text. Still lighter than --text-secondary
+     so the hierarchy holds. Dark-mode value is unchanged (already readable). */
+  --text-muted: #5b6076;
   --text-invert: #ffffff;
 
   --border: #d8dcea;
