@@ -87,6 +87,7 @@ export function AdminTable({
   const [sortKey, setSortKey] = useState<SortKey>("sessionDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete(id: string, title: string) {
@@ -97,6 +98,15 @@ export function AdminTable({
       const res = await fetch(`/api/submissions/${id}`, { method: "DELETE" });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (res.ok) {
+        // Remove the row immediately. Relying only on router.refresh() could
+        // briefly re-render the just-deleted row because the refetch can read
+        // the pre-delete state (read-after-write lag), which made a successful
+        // delete look like it did nothing.
+        setRemovedIds((prev) => {
+          const next = new Set(prev);
+          next.add(id);
+          return next;
+        });
         router.refresh();
       } else {
         setError(
@@ -125,7 +135,7 @@ export function AdminTable({
   };
 
   const filtered = useMemo(() => {
-    let result = submissions;
+    let result = submissions.filter((s) => !removedIds.has(s.id));
     if (statusFilter) {
       result = result.filter((s) => s.status === statusFilter);
     }
@@ -140,7 +150,7 @@ export function AdminTable({
       return sortDir === "asc" ? cmp : -cmp;
     });
     return result;
-  }, [submissions, search, statusFilter, sortKey, sortDir]);
+  }, [submissions, removedIds, search, statusFilter, sortKey, sortDir]);
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return null;
